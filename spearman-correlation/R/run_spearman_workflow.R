@@ -1266,9 +1266,7 @@ run_spearman_workflow <- function(
 
   storage.mode(feature_mat) <- "double"
 
-  rownames(feature_mat) <- feature_df_aligned[
-    [feature_col]
-  ]
+  rownames(feature_mat) <- feature_df_aligned[[feature_col]]
 
   # ----------------------------------------------------------
   # 9. Run all-sample and group-wise analyses
