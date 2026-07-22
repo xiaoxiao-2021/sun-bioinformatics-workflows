@@ -52,10 +52,10 @@ example_result <- run_spearman_workflow(
   strict_sample_match = FALSE,
 
   outdir = "spearman-correlation/examples/example_results",
-  save_results = TRUE,
+  save_results = FALSE,
   make_overview_plot = TRUE,
   label_top_n_each = 0,
-  verbose = TRUE
+  verbose = TRUEFALSE
 )
 
 # 4. Inspect returned objects
