@@ -2,70 +2,115 @@
 
 A reusable R workflow for batch Spearman rank correlation analysis between multiple features and one or more target variables.
 
-该工作流用于批量分析多个 `feature` 与一个或多个 `target` 之间的 Spearman 秩相关关系，支持全样本分析、组内分析、样本匹配、多重检验校正、结果筛选和基础可视化。
+该工作流用于批量分析多个 `feature` 与一个或多个 `target` 之间的 Spearman 秩相关关系，支持全样本分析、组内分析、样本匹配、缺失值处理、多重检验校正、结果筛选和基础可视化。
 
----
 
-## Features
-
-- Standardized `data.frame` input
-- Automatic sample matching and order alignment
-- Whole-cohort correlation analysis
-- Within-group correlation analysis
-- Multiple target variables
-- Missing-value handling
-- Constant-variable detection
-- Spearman `rho` and p-value calculation
-- Benjamini–Hochberg multiple-testing correction
-- Significant feature screening
-- Correlation overview plots
-- Single-feature scatter plots
-- CSV, PNG, PDF and RData output
-
+本流程中路径可根据自身实际存储路径进行改动！！ 流程中所显示的路径仅为试验时所用！！ お疲れ様(●ˇ∀ˇ●)
 ---
 
 ## Repository structure
 
 ```text
-spearman-correlation/
-├── README.md
-├── R/
-│   └── spearman_correlation_workflow.R
-├── examples/
-└── figures/
+sun-bioinformatics-workflows/
+└── spearman-correlation/
+    ├── README.md
+    ├── run_spearman_analysis.R
+    ├── R/
+    │   └── run_spearman_workflow.R
+    ├── examples/
+    │   ├── feature_df_example.csv
+    │   ├── target_df_example.csv
+    │   └── run_function_example.R
+    └── figures/
 ```
 
-The core workflow is stored in:
+### Function file
 
 ```text
-R/spearman_correlation_workflow.R
+spearman-correlation/R/run_spearman_workflow.R
+```
+
+该文件只定义可复用函数：
+
+```r
+run_spearman_workflow()
+plot_spearman_overview()
+plot_spearman_feature()
+```
+
+执行：
+
+```r
+source(
+  "spearman-correlation/R/run_spearman_workflow.R"
+)
+```
+
+只会加载函数，不会自动读取数据或开始分析。
+
+### Analysis launcher
+
+```text
+spearman-correlation/run_spearman_analysis.R
+```
+
+该文件是实际分析入口，负责：
+
+```text
+读取输入数据
+→ 加载函数
+→ 设置分析参数
+→ 调用 workflow
+→ 查看与验证结果
+```
+
+分析新数据时，主要修改启动脚本，不需要反复修改函数文件。
+
+---
+
+## Required R packages
+
+核心统计分析使用 base R。
+
+绘图需要：
+
+```r
+if (!requireNamespace("ggplot2", quietly = TRUE)) {
+  install.packages("ggplot2")
+}
+```
+
+在总览图中自动标注 feature 时还需要：
+
+```r
+if (!requireNamespace("ggrepel", quietly = TRUE)) {
+  install.packages("ggrepel")
+}
 ```
 
 ---
 
 ## Input data
 
-The workflow uses two standardized `data.frame` objects:
+Workflow 使用两个标准化 `data.frame`：
 
 ```r
 feature_df
 target_df
 ```
 
-Although the external input is standardized as `data.frame`, the workflow converts the feature values to a numeric matrix internally. The actual statistical calculation performed by `cor.test()` uses two matched numeric vectors.
-
 ### `feature_df`
 
-Required structure:
+要求：
 
-- Each row represents one feature
-- One column stores feature names
-- All other columns represent samples
-- Sample columns must be numeric
-- Feature names must not be duplicated
-- Sample column names must not be duplicated
+- 每一行代表一个 feature
+- 一列保存 feature 名称
+- 其余列代表样本
+- 样本列必须为 numeric
+- feature 名称不能重复
+- 样本列名不能重复
 
-Example:
+示例：
 
 | feature | S01 | S02 | S03 | S04 |
 |---|---:|---:|---:|---:|
@@ -73,142 +118,182 @@ Example:
 | Gene_B | 2.3 | 2.8 | 4.1 | 3.7 |
 | Gene_C | 7.4 | 6.9 | 8.0 | 7.2 |
 
-If the original data are stored as a numeric matrix and feature names are stored in row names:
+如果原始数据是 numeric matrix，并且 feature 名称保存在行名中：
 
 ```r
-feature_df <- tibble::rownames_to_column(
-  as.data.frame(feature_mat, check.names = FALSE),
-  var = "feature"
+feature_df <- data.frame(
+  feature = rownames(feature_mat),
+  feature_mat,
+  check.names = FALSE,
+  stringsAsFactors = FALSE
 )
 ```
 
 ### `target_df`
 
-Required structure:
+要求：
 
-- Each row represents one sample
-- One column stores sample names
-- One or more numeric columns store target variables
-- An optional group column can be used for within-group analysis
-- Each sample must appear only once
+- 每一行代表一个样本
+- 一列保存样本名称
+- 一个或多个 numeric 列保存 target
+- 可选分组列用于组内分析
+- 每个样本只能出现一次
 
-Example:
+示例：
 
-| sample | Score_A | Score_B | Group |
-|---|---:|---:|---|
-| S01 | 0.42 | 1.15 | IA |
-| S02 | 0.81 | 0.94 | IA |
-| S03 | 1.10 | 0.75 | ENEG |
-| S04 | 0.35 | 1.34 | ENEG |
+| Sample | Score_A | Group |
+|---|---:|---|
+| S01 | 0.42 | IA |
+| S02 | 0.81 | IA |
+| S03 | 1.10 | ENEG |
+| S04 | 0.35 | ENEG |
 
-Possible target variables include:
+一次明确的评分分析建议直接指定单个 target：
 
-- ssGSEA scores
-- pathway scores
-- immune infiltration scores
-- clinical indices
-- laboratory measurements
-- phenotype scores
-- other continuous or ordinal variables
+```r
+target_cols <- "Score_A"
+```
+
+`target_cols <- NULL` 会自动选择除样本列和分组列之外的全部 numeric 列。
 
 ---
 
-## Required R packages
+# Quick start
+
+## 1. 设置工作目录
+
+建议将工作目录设置为整个 GitHub 仓库根目录：
 
 ```r
-install.packages(
-  c(
-    "dplyr",
-    "tibble",
-    "purrr",
-    "readr",
-    "ggplot2",
-    "ggrepel"
-  )
+setwd(
+  "D:/Git/sun-bioinformatics-workflows"
 )
 ```
 
 ---
 
-## Quick start
+## 2. 打开启动脚本
 
-### 1. Prepare the input objects
+打开：
 
-Before running the workflow, create or import:
-
-```r
-feature_df
-target_df
+```text
+spearman-correlation/run_spearman_analysis.R
 ```
 
-For example:
+每次分析主要修改该文件，而不是直接修改：
+
+```text
+spearman-correlation/R/run_spearman_workflow.R
+```
+
+---
+
+## 3. 修改输入文件路径
+
+模拟数据：
+
+```r
+feature_file <- paste0(
+  "spearman-correlation/examples/",
+  "feature_df_example.csv"
+)
+
+target_file <- paste0(
+  "spearman-correlation/examples/",
+  "target_df_example.csv"
+)
+```
+
+真实数据示例：
+
+```r
+feature_file <- "D:/project_A/data/feature_df.csv"
+target_file  <- "D:/project_A/data/target_df.csv"
+```
+
+读取数据：
 
 ```r
 feature_df <- read.csv(
-  "feature_df.csv",
+  feature_file,
   check.names = FALSE,
   stringsAsFactors = FALSE
 )
 
 target_df <- read.csv(
-  "target_df.csv",
+  target_file,
   check.names = FALSE,
   stringsAsFactors = FALSE
 )
 ```
 
-Using `check.names = FALSE` helps prevent R from automatically modifying sample names.
+---
 
-### 2. Modify the parameter section
+## 4. 设置分析参数
 
-Open:
-
-```text
-R/spearman_correlation_workflow.R
-```
-
-Check and modify the following parameters.
-
-#### Parameters that must be checked for each dataset
+### Input columns
 
 ```r
 feature_col <- "feature"
-sample_col <- "sample"
+sample_col <- "Sample"
+```
 
-target_cols <- c(
-  "T_Cell_Exhaustion_Progenitor_like"
-)
+列名区分大小写。
 
-group_col <- "Group"
+### Feature selection
 
-selected_groups <- c(
-  "IA",
-  "ENEG"
+分析全部 feature：
+
+```r
+selected_features <- NULL
+```
+
+只分析指定 feature：
+
+```r
+selected_features <- c(
+  "RIPOR2",
+  "TOX",
+  "TCF7"
 )
 ```
 
-Column names are case-sensitive.
+### Target selection
 
-For example:
+分析一个指定评分：
 
-```text
-sample
-Sample
+```r
+target_cols <- "Score_A"
 ```
 
-are treated as different column names.
-
-#### Analysis switches
+### Whole-cohort and group-wise analysis
 
 ```r
 run_all_samples <- TRUE
 run_group_analysis <- TRUE
 ```
 
-- `run_all_samples = TRUE`: run correlation analysis using all matched samples
-- `run_group_analysis = TRUE`: run correlation analysis within the groups listed in `selected_groups`
+- `run_all_samples = TRUE`：分析全部共同样本，结果组名为 `All`
+- `run_group_analysis = TRUE`：分别进行组内分析
 
-#### Statistical parameters
+### Group settings
+
+```r
+group_col <- "Group"
+selected_groups <- NULL
+```
+
+当 `selected_groups <- NULL` 时，会自动分析全部非缺失、非空分组。
+
+例如真实分组为 `IA` 和 `ENEG`，且两个分析开关均为 `TRUE`，最终运行：
+
+```text
+All
+IA
+ENEG
+```
+
+### Statistical thresholds
 
 ```r
 min_n <- 5
@@ -217,93 +302,129 @@ p_cutoff <- 0.05
 padj_cutoff <- 0.05
 ```
 
-#### Sample-matching behavior
+### Sample matching
 
 ```r
 strict_sample_match <- FALSE
 ```
 
-- `FALSE`: report unmatched samples and continue using common samples
-- `TRUE`: stop the workflow when any unmatched sample is detected
+- `FALSE`：报告不匹配样本，并使用共同样本继续分析
+- `TRUE`：发现任何不匹配样本时停止
 
-#### Output directory
+### Output settings
+
+测试时：
 
 ```r
-outdir <- "results/spearman_correlation"
+save_results <- FALSE
 ```
 
-### 3. Run the workflow
+结果只保存在当前 R 会话中的 `spearman_result`，不会写入硬盘。
 
-From the repository root directory:
+正式分析时：
+
+```r
+save_results <- TRUE
+outdir <- "D:/project_A/results/spearman_analysis"
+```
+
+建议将正式结果保存到代码仓库外部。
+
+### Plot settings
+
+```r
+make_overview_plot <- TRUE
+label_top_n_each <- 0
+verbose <- TRUE
+```
+
+---
+
+## 5. Start the analysis
+
+启动脚本先加载函数：
 
 ```r
 source(
-  "spearman-correlation/R/spearman_correlation_workflow.R"
+  "spearman-correlation/R/run_spearman_workflow.R"
+)
+```
+
+真正启动分析的是：
+
+```r
+spearman_result <- run_spearman_workflow(
+  feature_df = feature_df,
+  target_df = target_df,
+
+  feature_col = feature_col,
+  sample_col = sample_col,
+
+  selected_features = selected_features,
+  target_cols = target_cols,
+
+  run_all_samples = run_all_samples,
+  run_group_analysis = run_group_analysis,
+
+  group_col = group_col,
+  selected_groups = selected_groups,
+
+  min_n = min_n,
+  r_cutoff = r_cutoff,
+  p_cutoff = p_cutoff,
+  padj_cutoff = padj_cutoff,
+
+  strict_sample_match = strict_sample_match,
+
+  outdir = outdir,
+  save_results = save_results,
+
+  make_overview_plot = make_overview_plot,
+  label_top_n_each = label_top_n_each,
+
+  verbose = verbose
 )
 ```
 
 ---
 
-## Sample matching
+# Sample matching
 
-The workflow first extracts sample names from both input objects.
+函数会：
 
-```r
-feature_samples <- setdiff(
-  colnames(feature_df),
-  feature_col
-)
-
-target_samples <- target_df[[sample_col]]
+```text
+提取两个输入中的样本名
+→ 使用 setdiff() 报告不匹配样本
+→ 使用 intersect() 提取共同样本
+→ 使用 match() 统一 target_df 顺序
+→ 检查最终样本顺序
 ```
 
-It then uses `setdiff()` to identify unmatched samples:
+运行后检查：
 
 ```r
-only_in_target <- setdiff(
-  target_samples,
-  feature_samples
-)
-
-only_in_feature <- setdiff(
-  feature_samples,
-  target_samples
-)
+spearman_result$sample_report
 ```
 
-It uses `intersect()` to obtain common samples:
+其中：
 
 ```r
-common_samples <- intersect(
-  feature_samples,
-  target_samples
-)
+spearman_result$sample_report$sample_order_ok
 ```
 
-Both input objects are then reordered according to the same sample vector.
-
-Before correlation analysis, the workflow confirms:
-
-```r
-identical(
-  colnames(feature_df_aligned)[-1],
-  target_df_aligned[[sample_col]]
-)
-```
-
-The result must be:
+正常应为：
 
 ```r
 TRUE
 ```
 
-This step is essential because `cor.test()` compares vector positions and does not automatically match samples by name.
+样本顺序必须一致，因为 `cor.test()` 按向量位置计算，不会自动根据样本名匹配。
 
 ---
 
-## Statistical analysis
+# Statistical analysis
 
-For each feature-target pair, the workflow performs:
+对每个 `feature × target × group`，函数运行：
 
 ```r
 cor.test(
@@ -314,308 +435,450 @@ cor.test(
 )
 ```
 
-Where:
-
-- `x_complete` is the numeric vector of one feature
-- `y_complete` is the matched numeric target vector
-- `exact = FALSE` allows approximate p-value calculation when tied ranks are present
-
-The workflow reports:
-
-| Field | Description |
-|---|---|
-| `feature` | Feature name |
-| `target` | Target variable |
-| `group` | Analysis group |
-| `rho` | Spearman correlation coefficient |
-| `abs_rho` | Absolute correlation coefficient |
-| `pvalue` | Raw p-value |
-| `padj` | BH-adjusted p-value |
-| `n` | Number of complete samples |
-| `direction` | Positive or negative correlation |
-| `status` | Calculation status |
-
-Multiple-testing correction is performed within each:
+BH 多重检验校正在每个独立的：
 
 ```text
 target × group
 ```
 
-using:
-
-```r
-p.adjust(
-  pvalue,
-  method = "BH"
-)
-```
+内部进行。
 
 ---
 
-## Output objects
+# Returned result object
 
-The main R objects generated by the workflow are:
+主函数返回：
+
+```r
+spearman_result
+```
+
+它是一个 `spearman_workflow_result` list，包含：
 
 ```text
+call
+parameters
+sample_report
+features_used
+targets_used
+groups_used
 feature_df_aligned
 target_df_aligned
 feature_mat
-cor_results
-cor_sig_p
-cor_sig_padj
-result_summary
+results
+significant_p
+significant_padj
+summary
+overview_plots
 ```
 
-### `feature_df_aligned`
+## `spearman_result$summary`
 
-Feature data after sample matching and order alignment.
+每个 `target × group` 的结果摘要。
 
-### `target_df_aligned`
+主要字段：
 
-Target data after sample matching and order alignment.
+| Field | Description |
+|---|---|
+| `group` | `All` 或具体分组 |
+| `target` | target 名称 |
+| `total_features` | 分析的 feature 总数 |
+| `valid_results` | 正常完成计算的结果数 |
+| `significant_by_p` | 按原始 p 值显著的结果数 |
+| `significant_by_padj` | 按 BH 校正 p 值显著的结果数 |
+| `positive_by_p` | 显著正相关结果数 |
+| `negative_by_p` | 显著负相关结果数 |
 
-### `feature_mat`
+## `spearman_result$results`
 
-Numeric matrix used internally for batch calculation.
+完整结果表。
 
-### `cor_results`
+| Field | Description |
+|---|---|
+| `feature` | Feature name |
+| `target` | Target variable |
+| `group` | `All` 或具体分组 |
+| `rho` | Spearman correlation coefficient |
+| `abs_rho` | `rho` 的绝对值 |
+| `pvalue` | 原始 p 值 |
+| `padj` | BH 校正后的 p 值 |
+| `n` | 实际参与计算的完整样本数 |
+| `direction` | `Positive`、`Negative` 或 `Zero` |
+| `status` | 计算状态 |
+| `significant_by_p` | 是否符合 rho 与原始 p 值阈值 |
+| `significant_by_padj` | 是否符合 rho 与校正 p 值阈值 |
 
-Complete correlation results.
+可能的 `status`：
 
-### `cor_sig_p`
+| Status | Meaning |
+|---|---|
+| `OK` | 正常完成计算 |
+| `insufficient_n` | 有效样本数小于 `min_n` |
+| `constant_feature` | feature 没有变化 |
+| `constant_target` | target 没有变化 |
+| `calculation_error` | 计算失败 |
 
-Results satisfying:
+## Significant results
+
+原始 p 值筛选结果：
+
+```r
+spearman_result$significant_p
+```
+
+筛选条件：
 
 ```text
 |rho| >= r_cutoff
 pvalue < p_cutoff
 ```
 
-### `cor_sig_padj`
+BH 校正后筛选结果：
 
-Results satisfying:
+```r
+spearman_result$significant_padj
+```
+
+筛选条件：
 
 ```text
 |rho| >= r_cutoff
 padj < padj_cutoff
 ```
 
-### `result_summary`
-
-Summary of valid and significant results for each `target × group`.
-
 ---
 
-## Output files
+# Viewing results
 
-Results are saved by default to:
-
-```text
-results/spearman_correlation/
-```
-
-Output structure:
-
-```text
-results/spearman_correlation/
-├── aligned_inputs/
-│   ├── feature_df_aligned.csv
-│   └── target_df_aligned.csv
-├── plots/
-│   ├── *_correlation_overview.png
-│   └── *_correlation_overview.pdf
-├── tables/
-│   ├── Spearman_all_results.csv
-│   ├── Spearman_sig_*.csv
-│   ├── Spearman_result_summary.csv
-│   └── group__target__all_results.csv
-└── Spearman_workflow_results.RData
-```
-
----
-
-## Correlation overview plot
-
-The workflow can generate one overview plot for each `target × group`.
-
-In this plot:
-
-- Each point represents one feature
-- The x-axis represents Spearman `rho`
-- The y-axis represents `-log10(p value)`
-- Positive, negative and non-significant results are displayed separately
-- Dashed lines represent the selected `rho` and p-value thresholds
-
----
-
-## Single-feature scatter plot
-
-The workflow also provides:
+查看摘要：
 
 ```r
-plot_feature_scatter()
+spearman_result$summary
 ```
 
-Example:
+查看完整结果：
 
 ```r
-p_gene <- plot_feature_scatter(
-  feature_name = "RIPOR2",
-  target_name = "T_Cell_Exhaustion_Progenitor_like",
-  group_name = "IA",
-  feature_mat = feature_mat,
-  target_df_aligned = target_df_aligned,
-  sample_col = sample_col,
-  group_col = group_col
+head(
+  spearman_result$results
+)
+```
+
+查看校正后显著结果：
+
+```r
+spearman_result$significant_padj
+```
+
+查看某个 feature：
+
+```r
+subset(
+  spearman_result$results,
+  feature == "RIPOR2"
+)
+```
+
+查看某个组：
+
+```r
+subset(
+  spearman_result$results,
+  group == "IA"
+)
+```
+
+---
+
+# Correlation overview plots
+
+查看图名：
+
+```r
+names(
+  spearman_result$overview_plots
+)
+```
+
+显示第一张图：
+
+```r
+print(
+  spearman_result$overview_plots[[1]]
+)
+```
+
+每个点代表一个 feature：
+
+- x 轴：Spearman `rho`
+- y 轴：`-log10(p value)`
+- 虚线：rho 和 p 值筛选阈值
+
+---
+
+# Single-feature scatter plot
+
+使用：
+
+```r
+plot_spearman_feature()
+```
+
+示例：
+
+```r
+p_gene <- plot_spearman_feature(
+  workflow_result = spearman_result,
+  feature_name = "Gene_Pos",
+  target_name = "Score_A",
+  group_name = "All",
+  add_lm = TRUE
 )
 
 print(p_gene)
 ```
 
-Each point represents one sample.
-
-The figure reports:
+每个点代表一个样本。图中显示：
 
 - Spearman `rho`
-- p-value
-- effective sample size
+- p 值
+- 有效样本数
+
+`add_lm = TRUE` 只添加线性趋势线用于可视化，不改变 Spearman 统计结果。
 
 ---
 
-## Recommended validation
+# Output files
 
-Before interpreting the results, check:
+当：
+
+```r
+save_results <- TRUE
+```
+
+时，结果保存到 `outdir`：
+
+```text
+outdir/
+├── aligned_inputs/
+│   ├── feature_df_aligned.csv
+│   ├── target_df_aligned.csv
+│   ├── features_used.csv
+│   ├── targets_used.csv
+│   └── groups_used.csv
+├── plots/
+│   ├── All__Score_A__correlation_overview.png
+│   ├── All__Score_A__correlation_overview.pdf
+│   └── ...
+├── tables/
+│   ├── Spearman_all_results.csv
+│   ├── Spearman_sig_absR0.5_p0.05.csv
+│   ├── Spearman_sig_absR0.5_padj0.05.csv
+│   ├── Spearman_result_summary.csv
+│   └── group__target__all_results.csv
+└── Spearman_workflow_results.rds
+```
+
+重新读取完整结果对象：
+
+```r
+saved_result <- readRDS(
+  "D:/project_A/results/spearman_analysis/Spearman_workflow_results.rds"
+)
+```
+
+---
+
+# Recommended validation
+
+运行前：
 
 ```r
 str(feature_df)
 str(target_df)
 ```
 
-Confirm sample alignment:
+运行后：
 
 ```r
-identical(
-  colnames(feature_df_aligned)[-1],
-  target_df_aligned[[sample_col]]
+spearman_result$sample_report$sample_order_ok
+
+table(
+  spearman_result$results$status,
+  useNA = "ifany"
 )
 ```
 
-Inspect unmatched samples:
+手工验证一个结果：
 
 ```r
-only_in_target
-only_in_feature
-```
+samples_check <- spearman_result$target_df_aligned[
+  [sample_col]
+]
 
-It is also recommended to manually verify one feature:
-
-```r
-x <- as.numeric(
-  feature_mat[
-    "RIPOR2",
-    target_df_aligned[[sample_col]]
+x_check <- as.numeric(
+  spearman_result$feature_mat[
+    "Gene_Pos",
+    samples_check
   ]
 )
 
-y <- target_df_aligned[
-  ["T_Cell_Exhaustion_Progenitor_like"]
+y_check <- spearman_result$target_df_aligned[
+  ["Score_A"]
 ]
 
-cor.test(
-  x,
-  y,
+manual_result <- cor.test(
+  x = x_check,
+  y = y_check,
   method = "spearman",
   exact = FALSE
 )
+
+manual_result
 ```
 
-The manually calculated result should agree with the corresponding row in `cor_results`.
+与结果表对应行比较：
+
+```r
+subset(
+  spearman_result$results,
+  feature == "Gene_Pos" &
+    target == "Score_A" &
+    group == "All"
+)
+```
 
 ---
 
-## Interpretation notes
+# Interpretation notes
 
-A positive Spearman coefficient means that the feature and target tend to increase together.
+结果解释应综合考虑：
 
-A negative coefficient means that one variable tends to decrease as the other increases.
-
-The interpretation should consider:
-
-- Correlation direction
-- Correlation strength
-- Raw and adjusted p-values
-- Effective sample size
-- Scatterplot distribution
-- Biological plausibility
-- Independent validation
+- 相关方向
+- 相关强度
+- 原始 p 值
+- BH 校正后的 p 值
+- 有效样本数
+- 散点分布
+- 生物学合理性
+- 独立数据或实验验证
 
 Correlation does not establish causation.
 
 ---
 
-## Common issues
+# Common issues
 
-### Unmatched sample names
+## Unmatched sample names
 
-Possible causes:
+常见原因：
 
-- Leading or trailing spaces
-- Different letter case
-- Different separators
-- R automatically modified sample names
-- Missing samples in one input table
+- 前后空格
+- 字母大小写不同
+- 分隔符不同
+- R 自动修改列名
+- 某个输入缺少样本
 
-### Non-numeric columns
+## Non-numeric columns
 
-Possible causes:
+常见原因：
 
 - `"-"`
 - `"unknown"`
 - `"not detected"`
-- Empty strings
-- Unit characters
+- 空字符串
+- 数值中混入单位
 
-### Duplicate samples or features
+## Duplicate samples or features
 
-Each sample in `target_df` must appear only once.
+- `target_df` 中每个样本只能出现一次
+- `feature_df` 中每个 feature 名称只能出现一次
+- feature 样本列名不能重复
 
-Duplicated features should be merged or otherwise resolved before running the workflow.
+## Insufficient sample size
 
-### Insufficient sample size
+某个分组样本数小于 `min_n` 时，该组会被跳过。
 
-Within-group analysis reduces the number of available samples.
+某个 feature 因缺失值导致有效样本数不足时，状态为：
 
-Results based on small groups should be interpreted cautiously.
+```text
+insufficient_n
+```
 
-### Constant variables
+## Constant variables
 
-A feature or target with no variation cannot be used to calculate correlation.
+对应状态：
 
-### Tied ranks
+```text
+constant_feature
+constant_target
+```
 
-Repeated values may produce tied ranks. The workflow uses:
+## Tied ranks
+
+Workflow 使用：
 
 ```r
 exact = FALSE
 ```
 
-to calculate an approximate p-value.
+计算近似 p 值。
 
 ---
 
-## Detailed documentation
+# Recommended project use
 
-A detailed Chinese explanation of the workflow is available here:
+建议代码仓库与真实分析项目分开管理：
+
+```text
+GitHub repository
+├── reusable function
+├── analysis launcher template
+├── example data
+└── documentation
+
+Local analysis project
+├── real data
+├── copied analysis launcher
+└── result files
+```
+
+实际分析时，可以将 `run_spearman_analysis.R` 复制到本地项目目录，再修改：
+
+```text
+feature_file
+target_file
+target_cols
+group_col
+selected_groups
+save_results
+outdir
+```
+
+---
+
+# Detailed documentation
 
 [Spearman correlation workflow](https://xiaoxiao-2021.github.io/sun-lab-life-astro-v2/bioinformatics/spearman-correlation-workflow/)
 
 ---
 
-## License
-
-This project is released under the MIT License.
-
-
-## Development note
+# Development note
 
 This workflow was developed with AI-assisted code drafting and was reviewed, tested, and maintained by the repository author.
+
+The current function version has passed a minimal simulated-data test covering:
+
+- Whole-cohort analysis
+- Within-group analysis
+- Constant-feature detection
+- Result summary generation
+- Overview plot generation
+- Single-feature scatter plotting
+- Manual `cor.test()` verification
+
+---
+
+# License
+
+This project is released under the MIT License.
