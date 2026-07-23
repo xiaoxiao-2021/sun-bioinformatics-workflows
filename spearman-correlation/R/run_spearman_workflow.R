@@ -502,7 +502,7 @@ run_spearman_workflow <- function(
     padj_cutoff = 0.05,
     strict_sample_match = FALSE,
     outdir = "results/spearman_correlation",
-    save_results = TRUE,
+    save_results = FALSE,
     make_overview_plot = TRUE,
     label_top_n_each = 0L,
     verbose = TRUE
@@ -1794,7 +1794,11 @@ run_spearman_workflow <- function(
 #' @param feature_name One feature name.
 #' @param target_name One target name.
 #' @param group_name `"All"` or one group value.
-#' @param add_lm Whether to add a linear trend line for visualization.
+#' @param plot_type Plot type:
+#'   `"scatter"` for a continuous target;
+#'   `"ordinal"` for an ordered target such as 0, 1, 2, 3, 4.
+#' @param add_lm Whether to add a linear trend line when
+#'   `plot_type = "scatter"`.
 #'
 #' @return A ggplot object.
 plot_spearman_feature <- function(
@@ -1802,8 +1806,11 @@ plot_spearman_feature <- function(
     feature_name,
     target_name,
     group_name = "All",
+    plot_type = c("scatter", "ordinal"),
     add_lm = TRUE
 ) {
+
+  plot_type <- match.arg(plot_type)
 
   .spearman_check_plot_packages(
     label_top_n_each = 0L
@@ -1923,74 +1930,143 @@ plot_spearman_feature <- function(
     )
   }
 
-  cor_result <- stats::cor.test(
-    x = scatter_df$feature_value,
-    y = scatter_df$target_value,
-    method = "spearman",
-    exact = FALSE
+  cor_result <- suppressWarnings(
+    stats::cor.test(
+      x = scatter_df$feature_value,
+      y = scatter_df$target_value,
+      method = "spearman",
+      exact = FALSE
+    )
   )
 
   rho_value <- unname(cor_result$estimate)
   p_value <- cor_result$p.value
 
-  p <- ggplot2::ggplot(
-    scatter_df,
-    ggplot2::aes(
-      x = target_value,
-      y = feature_value
-    )
-  ) +
-    ggplot2::geom_point(
-      size = 2.5,
-      alpha = 0.85
-    ) +
-    ggplot2::annotate(
-      geom = "text",
-      x = Inf,
-      y = Inf,
-      hjust = 1.1,
-      vjust = 1.3,
-      label = paste0(
-        "Spearman rho = ",
-        round(rho_value, 3),
-        "\np = ",
-        signif(p_value, 3),
-        "\nn = ",
-        nrow(scatter_df)
+  annotation_text <- paste0(
+    "Spearman rho = ",
+    round(rho_value, 3),
+    "\np = ",
+    signif(p_value, 3),
+    "\nn = ",
+    nrow(scatter_df)
+  )
+
+  if (identical(plot_type, "scatter")) {
+
+    p <- ggplot2::ggplot(
+      scatter_df,
+      ggplot2::aes(
+        x = target_value,
+        y = feature_value
       )
     ) +
-    ggplot2::labs(
-      title = paste0(
-        feature_name,
-        " vs ",
-        target_name
-      ),
-      subtitle = paste0(
-        "Group: ",
-        group_name
-      ),
-      x = target_name,
-      y = paste0(
-        feature_name,
-        " value"
+      ggplot2::geom_point(
+        size = 2.5,
+        alpha = 0.85
+      ) +
+      ggplot2::annotate(
+        geom = "text",
+        x = Inf,
+        y = Inf,
+        hjust = 1.1,
+        vjust = 1.3,
+        label = annotation_text
+      ) +
+      ggplot2::labs(
+        title = paste0(
+          feature_name,
+          " vs ",
+          target_name
+        ),
+        subtitle = paste0(
+          "Group: ",
+          group_name
+        ),
+        x = target_name,
+        y = paste0(
+          feature_name,
+          " value"
+        )
+      ) +
+      ggplot2::theme_bw(base_size = 13) +
+      ggplot2::theme(
+        plot.title = ggplot2::element_text(
+          hjust = 0.5,
+          face = "bold"
+        ),
+        plot.subtitle = ggplot2::element_text(
+          hjust = 0.5
+        )
       )
-    ) +
-    ggplot2::theme_bw(base_size = 13) +
-    ggplot2::theme(
-      plot.title = ggplot2::element_text(
-        hjust = 0.5,
-        face = "bold"
+
+    if (isTRUE(add_lm)) {
+      p <- p +
+        ggplot2::geom_smooth(
+          method = "lm",
+          se = TRUE
+        )
+    }
+
+  } else {
+
+    scatter_df$target_level <- factor(
+      scatter_df$target_value,
+      levels = sort(
+        unique(scatter_df$target_value)
       ),
-      plot.subtitle = ggplot2::element_text(
-        hjust = 0.5
-      )
+      ordered = TRUE
     )
 
-  if (isTRUE(add_lm)) {
-    p <- p +
-      ggplot2::geom_smooth(
-        method = "lm",
-        se = TRUE
+    p <- ggplot2::ggplot(
+      scatter_df,
+      ggplot2::aes(
+        x = target_level,
+        y = feature_value
+      )
+    ) +
+      ggplot2::geom_boxplot(
+        width = 0.6,
+        outlier.shape = NA
+      ) +
+      ggplot2::geom_jitter(
+        width = 0.12,
+        height = 0,
+        size = 2,
+        alpha = 0.65
+      ) +
+      ggplot2::annotate(
+        geom = "text",
+        x = Inf,
+        y = Inf,
+        hjust = 1.1,
+        vjust = 1.3,
+        label = annotation_text
+      ) +
+      ggplot2::labs(
+        title = paste0(
+          feature_name,
+          " vs ",
+          target_name
+        ),
+        subtitle = paste0(
+          "Group: ",
+          group_name
+        ),
+        x = target_name,
+        y = paste0(
+          feature_name,
+          " value"
+        )
+      ) +
+      ggplot2::theme_bw(base_size = 13) +
+      ggplot2::theme(
+        plot.title = ggplot2::element_text(
+          hjust = 0.5,
+          face = "bold"
+        ),
+        plot.subtitle = ggplot2::element_text(
+          hjust = 0.5
+        )
       )
   }
 
@@ -2076,9 +2152,11 @@ print.spearman_workflow_result <- function(
 #
 # p_gene <- plot_spearman_feature(
 #   workflow_result = result,
-#   feature_name = "Gene_A",
+#   feature_name = "Gene_Pos",
 #   target_name = "Score_A",
-#   group_name = "IA"
+#   group_name = "IA",
+#   plot_type = "scatter",
+#   add_lm = TRUE
 # )
 #
 # print(p_gene)
