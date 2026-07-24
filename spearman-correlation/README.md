@@ -302,6 +302,40 @@ p_cutoff <- 0.05
 padj_cutoff <- 0.05
 ```
 
+参数含义：
+
+- `min_n`：每次相关性计算所需的最少完整样本数
+- `r_cutoff`：相关系数绝对值阈值
+- `p_cutoff`：原始 p 值阈值，用于探索性候选筛选
+- `padj_cutoff`：BH 校正后 p 值阈值，用于 FDR 控制后的高置信筛选
+
+### Significance levels and intended use
+
+Workflow 同时保留原始 p 值和 BH 校正后的 p 值，两类结果的证据等级和用途不同。
+
+```text
+探索性候选：
+|rho| >= r_cutoff 且 pvalue < p_cutoff
+
+FDR 控制后的高置信结果：
+|rho| >= r_cutoff 且 padj < padj_cutoff
+```
+
+- `pvalue < p_cutoff` 表示达到名义显著性，适合候选 feature 发现、与其他证据取交集、富集分析和后续验证。
+- `padj < padj_cutoff` 表示在同一 `target × group` 分析范围内通过 BH 多重检验校正，可作为更严格的高置信结果。
+- `r_cutoff` 用于限制效应量，避免仅凭较小 p 值筛选相关强度很弱的结果。
+- 当组内样本量较少而 feature 数量较多时，`padj < 0.05` 可能非常严格，甚至没有结果通过筛选。
+- 未通过 `padj` 阈值不等同于证明不存在相关性，只表示当前数据不足以支持 FDR 控制后的显著结论。
+
+建议始终同时保留并报告：
+
+```text
+rho
+pvalue
+padj
+n
+```
+
 ### Sample matching
 
 ```r
@@ -484,10 +518,10 @@ overview_plots
 | `target` | target 名称 |
 | `total_features` | 分析的 feature 总数 |
 | `valid_results` | 正常完成计算的结果数 |
-| `significant_by_p` | 按原始 p 值显著的结果数 |
-| `significant_by_padj` | 按 BH 校正 p 值显著的结果数 |
-| `positive_by_p` | 显著正相关结果数 |
-| `negative_by_p` | 显著负相关结果数 |
+| `significant_by_p` | 同时满足相关系数阈值与原始 p 值阈值的探索性候选数量 |
+| `significant_by_padj` | 同时满足相关系数阈值与 BH 校正 p 值阈值的高置信结果数量 |
+| `positive_by_p` | 满足效应量与原始 p 值阈值的正相关候选数量 |
+| `negative_by_p` | 满足效应量与原始 p 值阈值的负相关候选数量 |
 
 ## `spearman_result$results`
 
@@ -505,8 +539,8 @@ overview_plots
 | `n` | 实际参与计算的完整样本数 |
 | `direction` | `Positive`、`Negative` 或 `Zero` |
 | `status` | 计算状态 |
-| `significant_by_p` | 是否符合 rho 与原始 p 值阈值 |
-| `significant_by_padj` | 是否符合 rho 与校正 p 值阈值 |
+| `significant_by_p` | 是否同时满足相关系数阈值与原始 p 值阈值，用于探索性候选筛选 |
+| `significant_by_padj` | 是否同时满足相关系数阈值与 BH 校正 p 值阈值，用于 FDR 控制后的高置信筛选 |
 
 可能的 `status`：
 
@@ -518,9 +552,9 @@ overview_plots
 | `constant_target` | target 没有变化 |
 | `calculation_error` | 计算失败 |
 
-## Significant results
+## Candidate and FDR-controlled results
 
-原始 p 值筛选结果：
+### Exploratory candidates based on nominal p value
 
 ```r
 spearman_result$significant_p
@@ -533,7 +567,15 @@ spearman_result$significant_p
 pvalue < p_cutoff
 ```
 
-BH 校正后筛选结果：
+该结果用于探索性候选 feature 筛选。由于相关性检验通常同时覆盖大量 feature，该结果未控制全体检验的假发现率，不能直接表述为“BH 校正后显著相关结果”。
+
+推荐表述：
+
+```text
+达到预设相关系数阈值且名义 p 值小于 0.05 的探索性相关候选
+```
+
+### FDR-controlled results
 
 ```r
 spearman_result$significant_padj
@@ -545,6 +587,28 @@ spearman_result$significant_padj
 |rho| >= r_cutoff
 padj < padj_cutoff
 ```
+
+该结果通过 BH 多重检验校正，表示在当前 `target × group` 分析范围内达到设定 FDR 阈值的高置信相关结果。
+
+推荐表述：
+
+```text
+经过 BH 多重检验校正后显著相关的 feature
+```
+
+### Recommended use of both result levels
+
+对于小样本组内分析，推荐同时保留两层结果：
+
+```text
+significant_p
+→ 用于探索性候选发现、与差异表达结果取交集、富集分析和后续验证
+
+significant_padj
+→ 用于判断是否存在通过全 feature 多重检验校正的高置信结果
+```
+
+与差异表达基因取交集可以增加候选结果的生物学针对性，但不会使未经校正的相关性 p 值自动成为 FDR 显著结果。
 
 ---
 
@@ -564,7 +628,13 @@ head(
 )
 ```
 
-查看校正后显著结果：
+查看基于原始 p 值的探索性候选：
+
+```r
+spearman_result$significant_p
+```
+
+查看 BH 校正后的高置信结果：
 
 ```r
 spearman_result$significant_padj
@@ -612,7 +682,9 @@ print(
 
 - x 轴：Spearman `rho`
 - y 轴：`-log10(p value)`
-- 虚线：rho 和 p 值筛选阈值
+- 虚线：rho 和原始 p 值筛选阈值
+
+总览图主要用于观察相关方向、相关强度和名义 p 值分布。图中越过原始 p 值虚线的点仍属于探索性候选，是否达到 FDR 控制后的显著性应查看结果表中的 `padj` 或 `significant_by_padj`。
 
 ---
 
@@ -624,7 +696,7 @@ print(
 plot_spearman_feature()
 ```
 
-示例：
+连续型 target 的散点图示例：
 
 ```r
 p_gene <- plot_spearman_feature(
@@ -632,19 +704,37 @@ p_gene <- plot_spearman_feature(
   feature_name = "Gene_Pos",
   target_name = "Score_A",
   group_name = "All",
+  plot_type = "scatter",
   add_lm = TRUE
 )
 
 print(p_gene)
 ```
 
+有序等级 target 的箱线图加抖动点示例：
+
+```r
+p_ordinal <- plot_spearman_feature(
+  workflow_result = spearman_result,
+  feature_name = "Gene_Pos",
+  target_name = "Scheuer_S",
+  group_name = "All",
+  plot_type = "ordinal",
+  add_lm = FALSE
+)
+
+print(p_ordinal)
+```
+
 每个点代表一个样本。图中显示：
 
 - Spearman `rho`
-- p 值
+- 原始 p 值
 - 有效样本数
 
-`add_lm = TRUE` 只添加线性趋势线用于可视化，不改变 Spearman 统计结果。
+`plot_type = "scatter"` 适合连续型 target；`plot_type = "ordinal"` 适合 0、1、2、3、4 等有序等级 target。
+
+`add_lm = TRUE` 只在线性散点图中添加趋势线用于可视化，不改变 Spearman 统计结果；在 `ordinal` 模式中不会用于统计计算。
 
 ---
 
@@ -678,6 +768,20 @@ outdir/
 │   └── group__target__all_results.csv
 └── Spearman_workflow_results.rds
 ```
+
+其中：
+
+```text
+Spearman_sig_absR0.5_p0.05.csv
+```
+
+保存基于原始 p 值的探索性候选；
+
+```text
+Spearman_sig_absR0.5_padj0.05.csv
+```
+
+保存经过 BH 多重检验校正后的高置信结果。
 
 重新读取完整结果对象：
 
@@ -759,9 +863,36 @@ subset(
 - 原始 p 值
 - BH 校正后的 p 值
 - 有效样本数
-- 散点分布
+- 散点或有序等级分布
 - 生物学合理性
 - 独立数据或实验验证
+
+## Exploratory and confirmatory interpretation
+
+本工作流同时输出名义 p 值结果和 BH 校正后的结果。
+
+- `pvalue < 0.05` 且达到相关系数阈值的结果，应表述为探索性相关候选。
+- `padj < 0.05` 且达到相关系数阈值的结果，可表述为经过 BH 多重检验校正后的显著相关结果。
+- 当组内样本量较少、feature 数量较多时，BH 校正后的筛选可能非常严格。
+- 未通过 `padj` 阈值不等同于证明不存在相关性，而表示当前数据不足以支持 FDR 控制后的显著结论。
+- 探索性结果适合用于候选基因筛选、与差异表达结果取交集、功能富集和后续验证，但应同时报告 `rho`、`pvalue`、`padj` 和有效样本数 `n`。
+- 与差异表达基因取交集可以增加候选结果的生物学针对性，但不会使未经校正的相关性自动成为 FDR 显著结果。
+
+例如：
+
+```text
+上调差异基因
+∩
+组内正相关探索性候选
+```
+
+更准确的解释是：
+
+```text
+同时具有组间差异表达证据和组内探索性相关证据的候选 feature
+```
+
+如果相关性结果同时满足 `padj < padj_cutoff`，才可以进一步描述为同时具备差异表达证据与 FDR 校正后相关证据。
 
 Correlation does not establish causation.
 
