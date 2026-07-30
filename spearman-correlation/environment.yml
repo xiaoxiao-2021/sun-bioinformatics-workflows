@@ -1,0 +1,16 @@
+name: spearman-r
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - r-base
+  - r-dplyr
+  - r-tibble
+  - r-purrr
+  - r-readr
+  - r-ggplot2
+  - r-ggrepel
+  - r-yaml
+  - r-optparse
+
+

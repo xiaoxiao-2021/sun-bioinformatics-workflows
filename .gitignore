@@ -5,6 +5,8 @@
 # Session Data files
 .RData
 .RDataTmp
+*.RData
+*.rds
 
 # User-specific files
 .Ruserdata
@@ -47,3 +49,10 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# Local workflow configuration, data, outputs and checkpoints
+config.local.yml
+data/
+results/
+logs/
+intermediate/

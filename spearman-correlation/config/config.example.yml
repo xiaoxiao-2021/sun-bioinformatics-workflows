@@ -1,0 +1,104 @@
+# All relative paths are resolved from this file's directory.
+project_id: spearman_example
+
+inputs:
+  expression_matrix: ../examples/feature_df_example.csv
+  score_metadata: ../examples/target_df_example.csv
+  expression_format: csv
+  metadata_format: csv
+
+output_dir: ../results/spearman_example
+
+columns:
+  feature: feature
+  sample: Sample
+  group: Group
+
+analysis:
+  # null means all expression features.
+  selected_features: null
+  # null would select every numeric metadata column except sample/group.
+  target_columns:
+    - Score_A
+  run_all_samples: true
+  run_group_analysis: true
+  # null means every non-missing group found in the metadata.
+  selected_groups: null
+  correlation_method: spearman
+  min_n: 5
+  strict_sample_match: false
+
+thresholds:
+  r_cutoff: 0.5
+  p_cutoff: 0.05
+  padj_cutoff: 0.05
+
+filters:
+  include_positive: true
+  include_negative: true
+
+quadrant:
+  enabled: false
+  # Set all four axis fields before enabling this module.
+  x_target: null
+  x_group: null
+  y_target: null
+  y_group: null
+  # One of: p, padj, none.
+  significance: padj
+  require_significant_both: true
+
+outputs:
+  aligned_inputs: true
+  combined_tables: true
+  per_analysis_tables: true
+  filtered_tables: true
+  result_rds: true
+
+intermediate:
+  enabled: true
+  reuse_existing: true
+
+plots:
+  overview:
+    enabled: true
+    label_top_n_each: 0
+    width: 7
+    height: 5.5
+    dpi: 300
+    formats:
+      - png
+      - pdf
+  single_feature:
+    enabled: true
+    width: 5
+    height: 4
+    dpi: 300
+    formats:
+      - png
+      - pdf
+    items:
+      - feature: Gene_Pos
+        target: Score_A
+        group: All
+        type: scatter
+        add_lm: true
+  quadrant:
+    enabled: false
+    width: 7
+    height: 5.5
+    dpi: 300
+    formats:
+      - png
+      - pdf
+
+validation:
+  manual:
+    enabled: true
+    items:
+      - feature: Gene_Pos
+        target: Score_A
+        group: All
+
+logging:
+  verbose: true
