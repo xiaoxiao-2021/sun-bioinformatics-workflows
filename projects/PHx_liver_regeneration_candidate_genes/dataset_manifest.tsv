@@ -1,0 +1,6 @@
+dataset	assay	species	role	status	source
+GSE95135	bulk RNA-seq	Mus musculus	primary PHx time-course discovery	active	https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE95135
+GSE215216	bulk RNA-seq	Mus musculus	independent validation	planned	https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE215216
+GSE180012	bulk RNA-seq	Mus musculus	time-matched sham and circadian validation	planned	https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE180012
+GSE136679	single-cell RNA-seq	Mus musculus	cell-type localization	planned	https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE136679
+

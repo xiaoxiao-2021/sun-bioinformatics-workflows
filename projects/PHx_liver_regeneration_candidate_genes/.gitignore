@@ -1,0 +1,10 @@
+.Rhistory
+.RData
+.Rproj.user/
+.venv/
+__pycache__/
+*.pyc
+
+datasets/*/raw/*
+!datasets/*/raw/.gitkeep
+
