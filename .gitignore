@@ -1,59 +1,46 @@
-# History files
+# Bioinformatics data and large analysis objects
+data/
+datasets/
+datasets/raw/
+*.fastq.gz
+*.bam
+*.sam
+*.rds
+*.h5ad
+*.RData
+results/raw/
+
+# Temporary files and caches
+tmp/
+.cache/
+*.tmp
+*.temp
+*~
+.DS_Store
+Thumbs.db
+
+# R and RStudio session files
 .Rhistory
 .Rapp.history
-
-# Session Data files
-.RData
 .RDataTmp
-*.RData
-*.rds
-
-# User-specific files
 .Ruserdata
-
-# Example code in package build process
+.Rproj.user/
+/*.Rcheck/
+/*.tar.gz
 *-Ex.R
 
-# Output files from R CMD build
-/*.tar.gz
-
-# Output files from R CMD check
-/*.Rcheck/
-
-# RStudio files
-.Rproj.user/
-
-# produced vignettes
-vignettes/*.html
-vignettes/*.pdf
-
-# OAuth2 token, see https://github.com/hadley/httr/releases/tag/v0.3
-.httr-oauth
-
-# knitr and R markdown default cache directories
+# R Markdown and package-generated temporary files
 *_cache/
 /cache/
-
-# Temporary files created by R markdown
 *.utf8.md
 *.knit.md
-
-# R Environment Variables
-.Renviron
-
-# pkgdown site
-docs/
-
-# translation temp files
+vignettes/*.html
+vignettes/*.pdf
 po/*~
 
-# RStudio Connect folder
+# Credentials and user-specific service files
+.Renviron
+.httr-oauth
 rsconnect/
 
-# Local workflow configuration, data, outputs and checkpoints
-config.local.yml
-data/
-results/
-logs/
-intermediate/
-.continue/agents/new-config.yaml
+# Keep source code, README files, YAML/configuration files and metadata tracked.

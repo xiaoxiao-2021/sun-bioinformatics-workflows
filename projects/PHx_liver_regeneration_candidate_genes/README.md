@@ -1,8 +1,10 @@
 # PHx liver regeneration candidate genes
 
-## Research question
+## 分析目标
 
 Compare the expression trajectories of candidate genes during mouse liver regeneration after partial hepatectomy (PHx), distinguish PHx-associated changes from sham-surgery responses, and validate promising patterns across independent datasets.
+
+比较小鼠部分肝切除术后肝再生过程中候选基因的表达轨迹，区分 PHx 相关变化与假手术反应，并在独立数据集中验证有潜力的表达模式。
 
 ## Current candidates
 
@@ -11,11 +13,15 @@ Compare the expression trajectories of candidate genes during mouse liver regene
 - **Cxcl2** - matrix symbol `Cxcl2`, ENSMUSG00000058427
 - **Ifrd1** - matrix symbol `Ifrd1`, ENSMUSG00000001627; the paper's Figure 1A candidate
 
+## 当前状态
+
+进行中。GSE95135 的数据清单、R/Python 分析入口和候选基因分析框架已经建立；跨数据集整合与最终候选基因结论仍待后续验证。
+
 ## Project organization
 
 This is a topic-level project. Each public dataset is stored under `datasets/<accession>/`; scripts and results use matching accession folders. Cross-dataset validation belongs in `scripts/integration/` and `results/integration/`.
 
-## Current dataset
+## 数据来源
 
 - GEO: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE95135
 - Organism: *Mus musculus*
@@ -23,7 +29,7 @@ This is a topic-level project. Each public dataset is stored under `datasets/<ac
 - Expression unit: author-provided log2 RPKM
 - Design: untreated control, sham surgery, and post-PHx time-course samples
 
-## Recommended R workflow
+## 使用方法
 
 The R scripts are the primary, human-readable workflow. They contain Chinese comments and separate data preparation, plotting, matched-time comparison, and trajectory testing.
 

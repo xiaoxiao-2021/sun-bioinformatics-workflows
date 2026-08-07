@@ -1,6 +1,6 @@
 # GSE182148 TAOK3 RNA m5C analysis
 
-## Project purpose
+## 分析目标
 
 基于GSE182148公开的RNA亚硫酸氢盐测序处理后数据，
 检索TAOK3相关候选m5C位点，并比较Control与NSUN2 knockdown
@@ -13,7 +13,7 @@
 3. NSUN2敲低后，相关位点的m5C水平是否下降？
 4. 这些变化是否在多个胰腺癌细胞系中重复出现？
 
-## Dataset
+## 数据来源
 
 - GEO accession: GSE182148
 - Cell lines:
@@ -23,6 +23,30 @@
 - Groups:
   - Control
   - NSUN2 knockdown
+
+## 当前状态
+
+进行中。项目已建立分步骤 R 脚本和 Quarto 分析报告，现阶段代码覆盖数据检查、TAOK3 位点整理、汇总、可视化和结果表导出。最终生物学结论仍需结合数据质控和重复性验证后更新。
+
+## 使用方法
+
+在本项目根目录按顺序运行：
+
+```bash
+Rscript scripts/01_data_check.R
+Rscript scripts/02_reshape_TAOK3.R
+Rscript scripts/03_summary_TAOK3.R
+Rscript scripts/04_visualize_TAOK3.R
+Rscript scripts/05_export_result_table.R
+```
+
+也可使用 Quarto 渲染完整报告：
+
+```bash
+quarto render GSE182148_TAOK3_m5C.qmd
+```
+
+运行前请确认所需输入数据已按下述目录约定放置，并根据脚本中的参数说明检查文件名和字段。
 
 ## Directory structure
 

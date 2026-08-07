@@ -4,6 +4,13 @@
 
 `run_spearman_analysis.R` 是唯一正式命令行入口。workflow 不清空工作区、不依赖 RStudio Global Environment、不调用 `setwd()`，也不要求终端当前目录固定。旧的 `run_spearman_workflow()` 函数接口仅为已有 R 代码保留兼容性；新项目应使用 YAML 配置和正式入口。
 
+## 适用场景
+
+- 批量评估表达特征、微生物丰度、甲基化指标或其他数值型 feature 与连续/有序表型之间的 Spearman 相关性。
+- 同时进行全样本和预定义分组内分析，并对多个 target 分别进行多重检验校正。
+- 需要配置驱动、服务器命令行运行、标准化表格与图形输出以及中间结果复用的探索性分析。
+- 不用于证明因果关系，也不直接替代需要处理重复测量、协变量或复杂研究设计的回归/混合模型。
+
 ## 统计语义
 
 对每个 `feature × target × group` 组合，workflow 在完整且有限的成对观测上运行：
@@ -67,7 +74,7 @@ cor.test(x, y, method = "spearman", exact = FALSE)
 首次创建：
 
 ```bash
-cd "$WORKFLOW_REPO/spearman-correlation"
+cd "$WORKFLOW_REPO/workflows/spearman-correlation"
 micromamba create -f environment.yml
 micromamba activate spearman-r
 ```
@@ -75,28 +82,28 @@ micromamba activate spearman-r
 环境已存在时更新：
 
 ```bash
-cd "$WORKFLOW_REPO/spearman-correlation"
+cd "$WORKFLOW_REPO/workflows/spearman-correlation"
 micromamba update -n spearman-r -f environment.yml
 micromamba activate spearman-r
 ```
 
 主要依赖包括 `r-base`、`r-dplyr`、`r-tibble`、`r-purrr`、`r-readr`、`r-ggplot2`、`r-ggrepel`、`r-yaml` 和 `r-optparse`。
 
-## 快速开始
+## 使用方法（快速开始）
 
 直接运行仓库示例：
 
 ```bash
 micromamba activate spearman-r
-Rscript "$WORKFLOW_REPO/spearman-correlation/run_spearman_analysis.R" \
-  --config "$WORKFLOW_REPO/spearman-correlation/config/config.example.yml"
+Rscript "$WORKFLOW_REPO/workflows/spearman-correlation/run_spearman_analysis.R" \
+  --config "$WORKFLOW_REPO/workflows/spearman-correlation/config/config.example.yml"
 ```
 
 推荐把真实分析配置和数据放在仓库外：
 
 ```bash
 mkdir -p "$ANALYSIS_DIR"/{data,results}
-cp "$WORKFLOW_REPO/spearman-correlation/config/config.example.yml" \
+cp "$WORKFLOW_REPO/workflows/spearman-correlation/config/config.example.yml" \
   "$ANALYSIS_DIR/config.yml"
 ```
 
@@ -104,7 +111,7 @@ cp "$WORKFLOW_REPO/spearman-correlation/config/config.example.yml" \
 
 ```bash
 micromamba activate spearman-r
-Rscript "$WORKFLOW_REPO/spearman-correlation/run_spearman_analysis.R" \
+Rscript "$WORKFLOW_REPO/workflows/spearman-correlation/run_spearman_analysis.R" \
   --config "$ANALYSIS_DIR/config.yml"
 ```
 
@@ -125,12 +132,13 @@ YAML 中所有相对输入路径和 `output_dir` 都以该 YAML 文件所在目�
 
 ```text
 $WORKFLOW_REPO/
-└── spearman-correlation/
-    ├── config/config.example.yml
-    ├── examples/
-    ├── R/
-    ├── environment.yml
-    └── run_spearman_analysis.R
+└── workflows/
+    └── spearman-correlation/
+        ├── config/config.example.yml
+        ├── examples/
+        ├── R/
+        ├── environment.yml
+        └── run_spearman_analysis.R
 
 $ANALYSIS_DIR/
 ├── config.yml
@@ -339,7 +347,7 @@ logging:
 
 `significance` 和 `require_significant_both` 只决定四象限结果中的 `selected` 标记。该模块不会重新计算或修改主结果、相关系数、P 值、BH 校正、方向筛选或阈值定义。`quadrant.enabled` 控制表格后处理，`plots.quadrant.enabled` 独立控制是否绘图，因此可以只导出四象限表。
 
-## 输出
+## 输出结果
 
 启用全部模块时，目录大致如下：
 
