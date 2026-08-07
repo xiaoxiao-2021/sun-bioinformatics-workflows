@@ -3,7 +3,7 @@ library(dplyr)
 
 # 读取分组比较结果
 comparison <- read_csv(
-  "data/processed/TAOK3_group_comparison.csv",
+  "results/statistics/TAOK3_group_comparison.csv",
   show_col_types = FALSE
 )
 
@@ -57,7 +57,9 @@ result_table <- comparison |>
 print(result_table, n = Inf)
 
 # 保存最终结果表
+table_dir <- "results/tables"
+dir.create(table_dir, recursive = TRUE, showWarnings = FALSE)
 write_csv(
   result_table,
-  "results/tables/TAOK3_m5C_result_table.csv"
+  file.path(table_dir, "TAOK3_m5C_result_table.csv")
 )

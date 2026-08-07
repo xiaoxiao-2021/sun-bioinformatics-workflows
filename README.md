@@ -22,4 +22,23 @@
 - 原始测序数据、大型中间文件和本地数据库不提交到 Git。
 - 每个项目和 workflow 的 README 应随研究进展持续更新。
 
+## 科研项目数据与输出规范
+
+项目内文件按语义归类，不按扩展名机械移动：
+
+| 路径 | 内容 |
+|---|---|
+| `data/raw/` 或 `datasets/<dataset>/raw/` | 下载或接收的原始数据。 |
+| `data/processed/` 或 `datasets/<dataset>/processed/` | 清洗、整理或格式转换后，仍会作为后续分析输入的数据。 |
+| `metadata/` 或 `datasets/<dataset>/metadata/` | 样本信息、分组、临床信息和数据集登记信息。 |
+| `scripts/` | 项目分析代码。 |
+| `results/tables/` | 最终或面向汇报的结果表。 |
+| `results/statistics/` | P 值、效应量、相关系数、差异分析等统计结果。 |
+| `results/summary/` | 描述性统计和分析汇总。 |
+| `figures/` | PDF、PNG、SVG 等全部图形输出。 |
+| `objects/` | RDS、RData、h5ad 等中间分析对象。 |
+| `docs/` | 分析记录、方法说明和结果解释。 |
+
+`processed data` 不等于 `results`：即使某个统计结果会被下一步脚本读取，只要它表达的是检验、比较、排序或汇总结论，就仍应放在 `results/`。脚本应显式创建输出目录并写入项目相对路径，禁止依赖当前工作目录生成 `Rplots.pdf`，也禁止写入个人服务器的绝对路径。
+
 本次目录重构只建立平台框架，不下载数据、不安装软件，也不创建或修改 Conda 环境。

@@ -43,18 +43,23 @@ p <- ggplot(
   ) +
   theme_classic()
 
-print(p)
+# 仅在交互式会话中显示；避免 Rscript 自动打开默认 PDF 设备并生成 Rplots.pdf。
+if (interactive()) {
+  print(p)
+}
 
-# 保存图片
+# 所有图形统一写入项目 figures/ 目录。
+figure_dir <- "figures"
+dir.create(figure_dir, recursive = TRUE, showWarnings = FALSE)
 ggsave(
-  "results/figures/TAOK3_m5C_by_cell_line.pdf",
+  filename = file.path(figure_dir, "TAOK3_m5C_by_cell_line.pdf"),
   plot = p,
   width = 9,
   height = 7
 )
 
 ggsave(
-  "results/figures/TAOK3_m5C_by_cell_line.png",
+  filename = file.path(figure_dir, "TAOK3_m5C_by_cell_line.png"),
   plot = p,
   width = 9,
   height = 7,

@@ -15,3 +15,16 @@
 ## 使用方法
 
 待补充。后续加入分析代码时，请在此记录运行顺序、输入文件、软件环境、关键参数和结果目录。项目特异代码应保存在本项目内；可复用的单细胞流程应整理到 `workflows/single_cell/`。
+
+## 目录约定
+
+- `data/raw/` 或 `datasets/<dataset>/raw/`：原始单细胞数据。
+- `data/processed/` 或 `datasets/<dataset>/processed/`：可继续用于下游分析的整理后输入数据。
+- `metadata/`：样本、分组、临床和批次信息。
+- `scripts/`：项目特异分析代码。
+- `results/statistics/`、`results/tables/` 和 `results/summary/`：数值、统计和汇总结果。
+- `figures/`：PDF、PNG、SVG 等图形。
+- `objects/`：Seurat RDS、RData、h5ad 等中间对象。
+- `docs/`：分析记录、方法和结果解释。
+
+仅在实际产生对应内容时创建目录，避免空目录堆积。

@@ -64,8 +64,10 @@ site_comparison <- group_summary |>
 print(group_summary, n = Inf)
 print(site_comparison, n = Inf)
 
-# 保存结果
+# 保存分组统计比较结果；该文件虽然会被下一步读取，但语义上属于分析结果。
+statistics_dir <- "results/statistics"
+dir.create(statistics_dir, recursive = TRUE, showWarnings = FALSE)
 write_csv(
   site_comparison,
-  "data/processed/TAOK3_group_comparison.csv"
+  file.path(statistics_dir, "TAOK3_group_comparison.csv")
 )

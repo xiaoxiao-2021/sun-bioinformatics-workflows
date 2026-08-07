@@ -79,8 +79,10 @@ taok3_dat |>
     delta_methR
   )
 
-# 保存提取结果
+# 保存可继续用于后续分析的处理后数据
+processed_dir <- "data/processed"
+dir.create(processed_dir, recursive = TRUE, showWarnings = FALSE)
 write_csv(
   taok3_dat,
-  "data/processed/TAOK3_sites.csv"
+  file.path(processed_dir, "TAOK3_sites.csv")
 )

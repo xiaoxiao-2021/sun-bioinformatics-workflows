@@ -327,9 +327,9 @@ def main() -> None:
     raw_dir = root / "datasets" / "GSE95135" / "raw"
     processed_dir = root / "datasets" / "GSE95135" / "processed"
     metadata_dir = root / "datasets" / "GSE95135" / "metadata"
-    figure_dir = root / "results" / "GSE95135" / "figures"
-    table_dir = root / "results" / "GSE95135" / "tables"
-    for directory in [processed_dir, metadata_dir, figure_dir, table_dir]:
+    figure_dir = root / "figures" / "GSE95135"
+    summary_dir = root / "results" / "summary" / "GSE95135"
+    for directory in [processed_dir, metadata_dir, figure_dir, summary_dir]:
         directory.mkdir(parents=True, exist_ok=True)
 
     matrix_path = find_matrix(raw_dir)
@@ -341,12 +341,14 @@ def main() -> None:
         metadata_dir / "matrix_sample_metadata.tsv", sep="\t", index=False
     )
     parse_geo_catalog(raw_dir / SOFT_NAME).to_csv(metadata_dir / "geo_sample_catalog.tsv", sep="\t", index=False)
-    summary.to_csv(table_dir / "candidate_genes_timecourse_summary.tsv", sep="\t", index=False)
+    summary.to_csv(summary_dir / "candidate_genes_timecourse_summary.tsv", sep="\t", index=False)
 
     for gene in args.genes:
         gene_expression = expression[expression["gene_symbol_current"] == gene].copy()
         gene_expression.to_csv(processed_dir / f"{gene}_log2RPKM_long.tsv", sep="\t", index=False)
-        summary[summary["gene_symbol_current"] == gene].to_csv(table_dir / f"{gene}_timecourse_summary.tsv", sep="\t", index=False)
+        summary[summary["gene_symbol_current"] == gene].to_csv(
+            summary_dir / f"{gene}_timecourse_summary.tsv", sep="\t", index=False
+        )
         plot_timecourse(
             gene_expression,
             gene,
@@ -364,7 +366,8 @@ def main() -> None:
         row = rows[gene]
         print(f"{gene}: matrix symbol {row[1]}, {row[0]}")
     print(f"Expression rows: {len(expression)}")
-    print(f"Results: {root / 'results' / 'GSE95135'}")
+    print(f"Summary tables: {summary_dir}")
+    print(f"Figures: {figure_dir}")
 
 
 if __name__ == "__main__":

@@ -1,14 +1,14 @@
-# Bioinformatics data and large analysis objects
-data/
-datasets/
-datasets/raw/
+# Raw bioinformatics data and large analysis objects
+**/data/raw/
+**/datasets/raw/
+*.fastq
 *.fastq.gz
 *.bam
 *.sam
 *.rds
 *.h5ad
 *.RData
-results/raw/
+**/results/raw/
 
 # Temporary files and caches
 tmp/

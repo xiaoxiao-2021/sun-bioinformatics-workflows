@@ -19,7 +19,18 @@ Compare the expression trajectories of candidate genes during mouse liver regene
 
 ## Project organization
 
-This is a topic-level project. Each public dataset is stored under `datasets/<accession>/`; scripts and results use matching accession folders. Cross-dataset validation belongs in `scripts/integration/` and `results/integration/`.
+This is a topic-level project. Each public dataset is stored under `datasets/<accession>/`; scripts and outputs use matching accession folders. Cross-dataset validation belongs in `scripts/integration/`, with its numeric outputs under the appropriate `results/` category.
+
+- `metadata/dataset_manifest.tsv`: project-level registry of discovery and validation datasets.
+- `datasets/<accession>/raw/`: original downloaded data; ignored by Git by default.
+- `datasets/<accession>/processed/`: cleaned expression tables that remain inputs to later analysis.
+- `datasets/<accession>/metadata/`: sample identifiers, groups, time points and source annotations.
+- `scripts/<accession>/`: dataset-specific analysis code.
+- `results/summary/<accession>/`: descriptive time-course summaries.
+- `results/statistics/<accession>/`: statistical comparisons, P values, FDR and model results.
+- `figures/<accession>/`: all PDF, PNG and SVG plots.
+- `objects/`: reusable RDS, RData or h5ad objects when needed.
+- `docs/`: project notes, methods and result interpretation when needed.
 
 ## 数据来源
 

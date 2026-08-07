@@ -73,8 +73,10 @@ taok3_long |>
   ) |>
   print(n = 45)
 
-# 保存长格式数据
+# 保存可继续用于后续分析的长格式数据
+processed_dir <- "data/processed"
+dir.create(processed_dir, recursive = TRUE, showWarnings = FALSE)
 write_csv(
   taok3_long,
-  "data/processed/TAOK3_sites_long.csv"
+  file.path(processed_dir, "TAOK3_sites_long.csv")
 )

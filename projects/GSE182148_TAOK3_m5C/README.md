@@ -50,13 +50,18 @@ quarto render GSE182148_TAOK3_m5C.qmd
 
 ## Directory structure
 
-- `data/raw/`: GEO下载的原始补充文件
-- `data/processed/`: 整理后的TAOK3相关数据
+- `data/raw/`: GEO 下载的原始补充文件
+- `data/processed/`: 清洗和重塑后、继续作为下游输入的 TAOK3 数据
+- `metadata/`: 样本、分组及数据来源说明（需要时建立）
 - `scripts/`: 分步骤分析代码
-- `results/tables/`: 输出表格
-- `results/figures/`: 输出图片
-- `docs/`: 数据理解和分析记录
+- `results/statistics/`: 位点和分组的统计比较结果
+- `results/tables/`: 最终汇总结果表
+- `figures/`: PDF、PNG 和 SVG 图形输出
+- `objects/`: RDS、RData 或 h5ad 等中间对象（需要时建立）
+- `docs/`: 数据理解、方法和结果解释记录
 - `GSE182148_TAOK3_m5C.qmd`: 完整分析报告
+
+其中 `TAOK3_sites.csv` 和 `TAOK3_sites_long.csv` 属于可继续分析的 processed data；`TAOK3_group_comparison.csv` 包含组间汇总与差值，属于 statistics result。
 
 ## Analysis workflow
 
