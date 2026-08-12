@@ -43,4 +43,11 @@ po/*~
 .httr-oauth
 rsconnect/
 
+# Local workflow settings and generated analysis outputs
+config.local.yml
+**/results/
+**/figures/
+**/logs/
+**/intermediate/
+
 # Keep source code, README files, YAML/configuration files and metadata tracked.
