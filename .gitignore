@@ -1,6 +1,8 @@
 # Raw bioinformatics data and large analysis objects
 **/data/raw/
 **/datasets/raw/
+**/datasets/processed/*.tsv
+**/datasets/processed/*.csv
 *.fastq
 *.fastq.gz
 *.bam
