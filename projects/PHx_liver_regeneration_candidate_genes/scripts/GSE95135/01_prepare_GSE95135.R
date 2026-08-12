@@ -122,8 +122,14 @@ project_root <- get_project_root()
 raw_dir <- file.path(project_root, "datasets", "GSE95135", "raw")
 processed_dir <- file.path(project_root, "datasets", "GSE95135", "processed")
 metadata_dir <- file.path(project_root, "datasets", "GSE95135", "metadata")
+figure_dir <- file.path(project_root, "results", "GSE95135", "figures")
+table_dir <- file.path(project_root, "results", "GSE95135", "tables")
+log_dir <- file.path(project_root, "results", "GSE95135", "logs")
 dir.create(processed_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(metadata_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(figure_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(table_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(log_dir, recursive = TRUE, showWarnings = FALSE)
 
 matrix_candidates <- list.files(
   raw_dir,

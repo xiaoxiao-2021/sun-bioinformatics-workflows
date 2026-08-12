@@ -70,9 +70,13 @@ interaction_results$interaction_fdr <- stats::p.adjust(
 )
 interaction_results <- interaction_results[order(interaction_results$interaction_fdr), , drop = FALSE]
 
-statistics_dir <- file.path(project_root, "results", "statistics", "GSE95135")
-dir.create(statistics_dir, recursive = TRUE, showWarnings = FALSE)
-output_path <- file.path(statistics_dir, "time_by_group_interaction_R.tsv")
+figure_dir <- file.path(project_root, "results", "GSE95135", "figures")
+table_dir <- file.path(project_root, "results", "GSE95135", "tables")
+log_dir <- file.path(project_root, "results", "GSE95135", "logs")
+dir.create(figure_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(table_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(log_dir, recursive = TRUE, showWarnings = FALSE)
+output_path <- file.path(table_dir, "time_by_group_interaction_R.tsv")
 write.table(
   interaction_results,
   output_path,

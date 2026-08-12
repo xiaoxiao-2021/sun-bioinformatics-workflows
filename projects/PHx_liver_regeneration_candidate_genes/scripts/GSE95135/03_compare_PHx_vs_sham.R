@@ -74,13 +74,15 @@ comparison <- do.call(rbind, comparison_list)
 comparison$fdr <- stats::p.adjust(comparison$p_value, method = "BH")
 comparison <- comparison[order(comparison$gene, comparison$time_hours), , drop = FALSE]
 
-statistics_dir <- file.path(project_root, "results", "statistics", "GSE95135")
-figure_dir <- file.path(project_root, "figures", "GSE95135")
-dir.create(statistics_dir, recursive = TRUE, showWarnings = FALSE)
+table_dir <- file.path(project_root, "results", "GSE95135", "tables")
+log_dir <- file.path(project_root, "results", "GSE95135", "logs")
+figure_dir <- file.path(project_root, "results", "GSE95135", "figures")
+dir.create(table_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(log_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(figure_dir, recursive = TRUE, showWarnings = FALSE)
 write.table(
   comparison,
-  file.path(statistics_dir, "matched_time_PHx_vs_sham_R.tsv"),
+  file.path(table_dir, "matched_time_PHx_vs_sham_R.tsv"),
   sep = "\t", row.names = FALSE, quote = FALSE
 )
 
@@ -124,5 +126,5 @@ ggplot2::ggsave(
 )
 
 message("匹配时点比较完成。")
-message("结果表：", file.path(statistics_dir, "matched_time_PHx_vs_sham_R.tsv"))
+message("结果表：", file.path(table_dir, "matched_time_PHx_vs_sham_R.tsv"))
 
