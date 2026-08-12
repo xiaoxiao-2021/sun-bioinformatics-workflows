@@ -159,10 +159,12 @@ plot_object <- ggplot2::ggplot() +
     axis.text.y = ggplot2::element_text(colour = "#374151")
   )
 
-figure_dir <- file.path(project_root, "figures", "GSE95135")
-summary_dir <- file.path(project_root, "results", "summary", "GSE95135")
+figure_dir <- file.path(project_root, "results", "GSE95135", "figures")
+table_dir <- file.path(project_root, "results", "GSE95135", "tables")
+log_dir <- file.path(project_root, "results", "GSE95135", "logs")
 dir.create(figure_dir, recursive = TRUE, showWarnings = FALSE)
-dir.create(summary_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(table_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(log_dir, recursive = TRUE, showWarnings = FALSE)
 
 output_stem <- paste0(target_gene, "_PHx_vs_sham_0_72h_R")
 ggplot2::ggsave(file.path(figure_dir, paste0(output_stem, ".png")), plot_object,
@@ -171,11 +173,11 @@ ggplot2::ggsave(file.path(figure_dir, paste0(output_stem, ".pdf")), plot_object,
                 width = 11, height = 6.7)
 write.table(
   summary_data,
-  file.path(summary_dir, paste0(target_gene, "_timecourse_summary_R.tsv")),
+  file.path(table_dir, paste0(target_gene, "_timecourse_summary_R.tsv")),
   sep = "\t", row.names = FALSE, quote = FALSE
 )
 
 message("绘图完成：", target_gene)
 message("图形目录：", figure_dir)
-message("汇总表目录：", summary_dir)
+message("汇总表目录：", table_dir)
 

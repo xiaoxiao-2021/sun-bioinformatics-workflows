@@ -1,46 +1,64 @@
-# Raw bioinformatics data and large analysis objects
-**/data/raw/
-**/datasets/raw/
-*.fastq
-*.fastq.gz
-*.bam
-*.sam
-*.rds
-*.h5ad
-*.RData
-**/results/raw/
+# ============================================================
+# Bioinformatics generated data / results
+# ============================================================
 
-# Temporary files and caches
-tmp/
-.cache/
-*.tmp
-*.temp
-*~
+# Raw datasets
+**/datasets/raw/
+
+# Processed expression matrices
+**/datasets/processed/*.rds
+**/datasets/processed/*.tsv
+
+
+# ============================================================
+# Analysis results
+# ============================================================
+
+**/results/**/*.tsv
+**/results/**/*.csv
+**/results/**/*.rds
+
+
+# ============================================================
+# Generated figures
+# ============================================================
+
+**/figures/**/*.png
+**/figures/**/*.pdf
+
+
+# ============================================================
+# R temporary files
+# ============================================================
+
+.Rhistory
+.RData
+.Ruserdata
+
+
+# ============================================================
+# OS / editor temporary files
+# ============================================================
+
 .DS_Store
 Thumbs.db
+*.tmp
+*.log
 
-# R and RStudio session files
-.Rhistory
-.Rapp.history
-.RDataTmp
-.Ruserdata
-.Rproj.user/
-/*.Rcheck/
-/*.tar.gz
-*-Ex.R
+# ============================================================
+# Analysis results
+# ============================================================
 
-# R Markdown and package-generated temporary files
-*_cache/
-/cache/
-*.utf8.md
-*.knit.md
-vignettes/*.html
-vignettes/*.pdf
-po/*~
+**/results/**/*.tsv
+**/results/**/*.csv
+**/results/**/*.rds
+**/results/**/*.png
+**/results/**/*.pdf
 
-# Credentials and user-specific service files
-.Renviron
-.httr-oauth
-rsconnect/
 
-# Keep source code, README files, YAML/configuration files and metadata tracked.
+# ============================================================
+# Generated figures
+# ============================================================
+
+**/figures/**/*.png
+**/figures/**/*.pdf
