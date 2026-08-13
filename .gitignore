@@ -53,3 +53,6 @@ config.local.yml
 **/intermediate/
 
 # Keep source code, README files, YAML/configuration files and metadata tracked.
+
+# Codex / bioSkills local agent skills
+.agents/skills/
