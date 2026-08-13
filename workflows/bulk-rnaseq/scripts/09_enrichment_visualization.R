@@ -8,62 +8,116 @@ plot_data_dir <- file.path(result_dir, "plot_data")
 dir.create(figure_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(plot_data_dir, recursive = TRUE, showWarnings = FALSE)
 prefix <- paste(cfg$dataset_id, cfg$case_group, "vs", cfg$control_group, sep = "_")
+enrichment_p_tag <- format(cfg$enrichment_pvalue_cutoff, trim = TRUE, scientific = FALSE)
+enrichment_fdr_tag <- format(cfg$enrichment_FDR_cutoff, trim = TRUE, scientific = FALSE)
 
-# Draw horizontal dotplots for each significant ORA result
-make_dotplot <- function(database, direction) {
+# Draw either formal FDR or exploratory nominal P enrichment
+make_dotplot <- function(database, direction, result_type) {
   analysis_name <- paste(database, direction, sep = "_")
+  analysis_label <- if (database == "GO_BP") "GO Biological Process" else "KEGG Pathways"
+  direction_label <- if (direction == "UP") "Upregulated Genes" else "Downregulated Genes"
   output_base <- paste(prefix, analysis_name, sep = "_")
-  input_file <- file.path(result_dir, paste0(output_base, "_FDR", cfg$enrichment_FDR_cutoff, ".tsv"))
-  png_file <- file.path(figure_dir, paste0(output_base, "_dotplot.png"))
-  pdf_file <- file.path(figure_dir, paste0(output_base, "_dotplot.pdf"))
-  plot_data_file <- file.path(plot_data_dir, paste0(output_base, "_plot_terms.tsv"))
+
+  if (result_type == "FDR") {
+    result_tag <- paste0("FDR", enrichment_fdr_tag)
+    metric_column <- "p.adjust"
+    metric_label <- "-log10(FDR)"
+    cutoff <- cfg$enrichment_FDR_cutoff
+    subtitle <- paste("FDR <", cutoff)
+    missing_message <- "No FDR enrichment result for"
+  } else {
+    result_tag <- paste0("P", enrichment_p_tag)
+    metric_column <- "pvalue"
+    metric_label <- "-log10(P.Value)"
+    cutoff <- cfg$enrichment_pvalue_cutoff
+    subtitle <- paste("Exploratory: nominal P <", cutoff)
+    missing_message <- "No nominal enrichment result for"
+  }
+
+  input_file <- file.path(result_dir, paste0(output_base, "_", result_tag, ".tsv"))
+  png_file <- file.path(figure_dir, paste0(output_base, "_", result_tag, "_dotplot.png"))
+  pdf_file <- file.path(figure_dir, paste0(output_base, "_", result_tag, "_dotplot.pdf"))
+  plot_data_file <- file.path(plot_data_dir, paste0(output_base, "_", result_tag, "_plot_terms.tsv"))
+
   if (!file.exists(input_file) || file.info(input_file)$size == 0) {
     unlink(c(png_file, pdf_file, plot_data_file))
-    cat("No significant enrichment result for", analysis_name, ". Plot skipped.\n")
+    cat(missing_message, analysis_name, ". Plot skipped.\n")
     return(invisible(NULL))
   }
   enrichment <- read.delim(input_file, check.names = FALSE, stringsAsFactors = FALSE)
   if (!nrow(enrichment)) {
     unlink(c(png_file, pdf_file, plot_data_file))
-    cat("No significant enrichment result for", analysis_name, ". Plot skipped.\n")
-    return(invisible(NULL))
-  }
-  required <- c("Description", "GeneRatio", "Count", "p.adjust")
-  if (!all(required %in% names(enrichment))) {
-    if (!nrow(enrichment)) {
-      unlink(c(png_file, pdf_file, plot_data_file))
-      cat("No significant enrichment result for", analysis_name, ". Plot skipped.\n")
-      return(invisible(NULL))
-    }
-    stop("Missing enrichment plot column(s): ", paste(setdiff(required, names(enrichment)), collapse = ", "))
-  }
-  ratio_parts <- strsplit(enrichment$GeneRatio, "/", fixed = TRUE)
-  enrichment$GeneRatio_numeric <- vapply(ratio_parts, function(x) as.numeric(x[1]) / as.numeric(x[2]), numeric(1))
-  enrichment$FDR <- as.numeric(enrichment$p.adjust)
-  enrichment$minus_log10_FDR <- -log10(pmax(enrichment$FDR, .Machine$double.xmin))
-  enrichment <- enrichment[is.finite(enrichment$GeneRatio_numeric) & is.finite(enrichment$FDR) & enrichment$FDR < cfg$enrichment_FDR_cutoff, ]
-  if (!nrow(enrichment)) {
-    unlink(c(png_file, pdf_file, plot_data_file))
-    cat("No significant enrichment result for", analysis_name, ". Plot skipped.\n")
+    cat(missing_message, analysis_name, ". Plot skipped.\n")
     return(invisible(NULL))
   }
 
-  # Show at most configured N; when fewer are significant, show all
-  plot_data <- head(enrichment[order(enrichment$FDR), ], cfg$show_category_n)
+  required <- c("Description", "GeneRatio", "Count", metric_column)
+  if (!all(required %in% names(enrichment))) {
+    stop("Missing enrichment plot column(s): ", paste(setdiff(required, names(enrichment)), collapse = ", "))
+  }
+
+  ratio_parts <- strsplit(as.character(enrichment$GeneRatio), "/", fixed = TRUE)
+  enrichment$GeneRatio_numeric <- vapply(
+    ratio_parts,
+    function(x) as.numeric(x[1]) / as.numeric(x[2]),
+    numeric(1)
+  )
+  enrichment$plot_metric <- as.numeric(enrichment[[metric_column]])
+  enrichment$minus_log10_metric <- -log10(
+    pmax(enrichment$plot_metric, .Machine$double.xmin)
+  )
+  enrichment <- enrichment[
+    is.finite(enrichment$GeneRatio_numeric) &
+      is.finite(enrichment$plot_metric) & enrichment$plot_metric < cutoff,
+    , drop = FALSE
+  ]
+  if (!nrow(enrichment)) {
+    unlink(c(png_file, pdf_file, plot_data_file))
+    cat(missing_message, analysis_name, ". Plot skipped.\n")
+    return(invisible(NULL))
+  }
+
+  # Show at most configured N, ordered by the selected pathway statistic
+  plot_data <- head(enrichment[order(enrichment$plot_metric), , drop = FALSE], cfg$show_category_n)
   write.table(plot_data, plot_data_file, sep = "\t", quote = FALSE, row.names = FALSE, na = "")
   plot_data$Description <- factor(plot_data$Description, levels = rev(plot_data$Description))
-  p <- ggplot2::ggplot(plot_data, ggplot2::aes(GeneRatio_numeric, Description, size = Count, color = minus_log10_FDR)) +
+  p <- ggplot2::ggplot(
+    plot_data,
+    ggplot2::aes(GeneRatio_numeric, Description, size = Count, color = minus_log10_metric)
+  ) +
     ggplot2::geom_point(alpha = .85) +
     ggplot2::scale_color_gradient(low = "#4DBBD5", high = "#E64B35") +
-    ggplot2::labs(title = paste(gsub("_", " ", analysis_name), "ORA"), x = "GeneRatio", y = NULL, color = "-log10(FDR)") +
+    ggplot2::labs(
+      title = paste(analysis_label, "-", direction_label),
+      subtitle = subtitle,
+      x = "GeneRatio", y = NULL, color = metric_label
+    ) +
     ggplot2::theme_classic(base_size = 12)
   plot_height <- max(3.5, 2.5 + .30 * nrow(plot_data))
   ggplot2::ggsave(png_file, p, width = 9, height = plot_height, dpi = 300)
   ggplot2::ggsave(pdf_file, p, width = 9, height = plot_height)
-  cat(analysis_name, ": plotted", nrow(plot_data), "terms\n")
+  cat(analysis_name, result_tag, ": plotted", nrow(plot_data), "terms\n")
 }
 
-make_dotplot("GO_BP", "UP")
-make_dotplot("GO_BP", "DOWN")
-make_dotplot("KEGG", "UP")
-make_dotplot("KEGG", "DOWN")
+# Remove legacy untagged dotplots from earlier workflow versions
+legacy_dotplots <- list.files(
+  figure_dir,
+  pattern = paste0("^", prefix, "_(GO_BP|KEGG)_(UP|DOWN)_dotplot\\.(png|pdf)$"),
+  full.names = TRUE
+)
+unlink(legacy_dotplots)
+legacy_plot_data <- list.files(
+  plot_data_dir,
+  pattern = paste0("^", prefix, "_(GO_BP|KEGG)_(UP|DOWN)_plot_terms\\.tsv$"),
+  full.names = TRUE
+)
+unlink(legacy_plot_data)
+
+for (database in c("GO_BP", "KEGG")) {
+  for (direction in c("UP", "DOWN")) {
+    # Plot FDR enrichment
+    make_dotplot(database, direction, "FDR")
+    # Plot nominal P enrichment
+    make_dotplot(database, direction, "P")
+  }
+}

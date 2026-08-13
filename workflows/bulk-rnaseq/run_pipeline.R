@@ -11,7 +11,9 @@ required <- c(
   "limma_FDR_cutoff", "deg_FDR_cutoff", "deg_logFC_cutoff", "pvalue_cutoff",
   "TREAT_lfc_cutoff", "TREAT_FDR_cutoff", "downstream_deg_method",
   "volcano_FDR_cutoff", "volcano_logFC_cutoff", "volcano_label_n",
-  "heatmap_top_n", "enrichment_FDR_cutoff", "min_GS_size", "max_GS_size",
+  "heatmap_top_n", "heatmap_gene_filter", "enrichment_pvalue_cutoff",
+  "enrichment_FDR_cutoff",
+  "min_GS_size", "max_GS_size",
   "show_category_n"
 )
 missing_keys <- required[!vapply(required, function(x) !is.null(config[[x]]), logical(1))]
@@ -20,6 +22,9 @@ if (!grepl("^[A-Za-z0-9._-]+$", config$dataset_id)) stop("dataset_id contains un
 if (config$case_group == config$control_group) stop("case_group and control_group must differ")
 if (!config$downstream_deg_method %in% c("limma", "limma_pvalue", "treat")) {
   stop("downstream_deg_method must be 'limma', 'limma_pvalue', or 'treat'")
+}
+if (!config$heatmap_gene_filter %in% c("all", "annotated", "protein_coding")) {
+  stop("heatmap_gene_filter must be 'all', 'annotated', or 'protein_coding'")
 }
 
 project_dir <- normalizePath(config$project_dir, mustWork = TRUE)

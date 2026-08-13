@@ -13,6 +13,8 @@ fdr_tag <- format(cfg$TREAT_FDR_cutoff, trim = TRUE, scientific = FALSE)
 deg_fdr_tag <- format(cfg$deg_FDR_cutoff, trim = TRUE, scientific = FALSE)
 deg_lfc_tag <- format(cfg$deg_logFC_cutoff, trim = TRUE, scientific = FALSE)
 pvalue_tag <- format(cfg$pvalue_cutoff, trim = TRUE, scientific = FALSE)
+enrichment_p_tag <- format(cfg$enrichment_pvalue_cutoff, trim = TRUE, scientific = FALSE)
+enrichment_fdr_tag <- format(cfg$enrichment_FDR_cutoff, trim = TRUE, scientific = FALSE)
 
 # Background: all standard limma-tested genes with mapped ENTREZID
 background_data <- read.delim(file.path(de_dir, paste0(prefix, "_limma_all_genes_annotated.tsv")), check.names = FALSE)
@@ -52,7 +54,8 @@ run_ora <- function(genes, database, direction) {
   output_base <- paste(prefix, analysis_name, sep = "_")
   empty_result <- data.frame(
     ID = character(), Description = character(), GeneRatio = character(),
-    Count = integer(), p.adjust = numeric(), stringsAsFactors = FALSE
+    Count = integer(), pvalue = numeric(), p.adjust = numeric(),
+    stringsAsFactors = FALSE
   )
   if (!length(genes)) {
     all_result <- empty_result
@@ -85,13 +88,42 @@ run_ora <- function(genes, database, direction) {
     )
     all_result <- if (is.null(enrichment)) empty_result else as.data.frame(enrichment)
   }
-  significant <- if (nrow(all_result)) all_result[!is.na(all_result$p.adjust) & all_result$p.adjust < cfg$enrichment_FDR_cutoff, , drop = FALSE] else all_result
-  write.table(all_result, file.path(result_dir, paste0(output_base, "_all.tsv")), sep = "\t", quote = FALSE, row.names = FALSE, na = "")
-  write.table(significant, file.path(result_dir, paste0(output_base, "_FDR", cfg$enrichment_FDR_cutoff, ".tsv")), sep = "\t", quote = FALSE, row.names = FALSE, na = "")
-  if (nrow(significant)) {
-    cat(analysis_name, ":", nrow(significant), "significant terms\n")
+  # Exploratory nominal pathway result
+  nominal_result <- if (nrow(all_result)) {
+    all_result[
+      !is.na(all_result$pvalue) &
+        all_result$pvalue < cfg$enrichment_pvalue_cutoff,
+      , drop = FALSE
+    ]
   } else {
-    cat("No significant enrichment result for", analysis_name, ".\n")
+    all_result
+  }
+
+  # Formal FDR-adjusted pathway result
+  significant_result <- if (nrow(all_result)) {
+    all_result[
+      !is.na(all_result$p.adjust) &
+        all_result$p.adjust < cfg$enrichment_FDR_cutoff,
+      , drop = FALSE
+    ]
+  } else {
+    all_result
+  }
+
+  write.table(all_result, file.path(result_dir, paste0(output_base, "_all.tsv")), sep = "\t", quote = FALSE, row.names = FALSE, na = "")
+  # Save nominal enrichment table
+  write.table(nominal_result, file.path(result_dir, paste0(output_base, "_P", enrichment_p_tag, ".tsv")), sep = "\t", quote = FALSE, row.names = FALSE, na = "")
+  write.table(significant_result, file.path(result_dir, paste0(output_base, "_FDR", enrichment_fdr_tag, ".tsv")), sep = "\t", quote = FALSE, row.names = FALSE, na = "")
+
+  cat(analysis_name, "\n")
+  cat("All terms:", nrow(all_result), "\n")
+  cat("Nominal P <", cfg$enrichment_pvalue_cutoff, ":", nrow(nominal_result), "\n")
+  cat("FDR <", cfg$enrichment_FDR_cutoff, ":", nrow(significant_result), "\n")
+  if (!nrow(nominal_result)) {
+    cat("No nominally significant enrichment result for", analysis_name, ".\n")
+  }
+  if (!nrow(significant_result)) {
+    cat("No FDR-significant enrichment result for", analysis_name, ".\n")
   }
 }
 

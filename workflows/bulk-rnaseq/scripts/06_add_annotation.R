@@ -5,6 +5,7 @@ project_dir <- normalizePath(cfg$project_dir, mustWork = TRUE)
 de_dir <- file.path(project_dir, "results", cfg$dataset_id, "DE")
 annotation_file <- file.path(project_dir, "datasets", "processed", paste0(cfg$dataset_id, "_bulk_workflow_gene_annotation.tsv"))
 annotation <- read.delim(annotation_file, check.names = FALSE, stringsAsFactors = FALSE)
+if (anyDuplicated(annotation$ENSEMBL)) stop("Master annotation contains duplicated ENSEMBL keys")
 prefix <- paste(cfg$dataset_id, cfg$case_group, "vs", cfg$control_group, sep = "_")
 lfc_tag <- format(cfg$TREAT_lfc_cutoff, trim = TRUE, scientific = FALSE)
 fdr_tag <- format(cfg$TREAT_FDR_cutoff, trim = TRUE, scientific = FALSE)
@@ -29,8 +30,8 @@ files <- c(
 for (filename in files) {
   input <- file.path(de_dir, filename)
   result <- read.delim(input, check.names = FALSE, stringsAsFactors = FALSE)
+  original_order <- result$ENSEMBL
   result <- merge(result, annotation, by = "ENSEMBL", all.x = TRUE, sort = FALSE)
-  original_order <- read.delim(input, check.names = FALSE, stringsAsFactors = FALSE)$ENSEMBL
   result <- result[match(original_order, result$ENSEMBL), ]
   output <- file.path(de_dir, sub("\\.tsv$", "_annotated.tsv", filename))
   write.table(result, output, sep = "\t", quote = FALSE, row.names = FALSE, na = "")

@@ -36,7 +36,8 @@ save_volcano <- function(p_column, cutoff, statistic_label, file_tag) {
     pmax(volcano_plot_data[[p_column]], .Machine$double.xmin)
   )
 
-  label_available <- !is.na(volcano_plot_data$SYMBOL) & volcano_plot_data$SYMBOL != ""
+  label_available <- !is.na(volcano_plot_data$DISPLAY_NAME) &
+    volcano_plot_data$DISPLAY_NAME != ""
   label_up <- volcano_plot_data[volcano_plot_data$change == "Up" & label_available, , drop = FALSE]
   label_down <- volcano_plot_data[volcano_plot_data$change == "Down" & label_available, , drop = FALSE]
   label_up <- head(label_up[order(label_up[[p_column]]), , drop = FALSE], cfg$volcano_label_n)
@@ -50,7 +51,7 @@ save_volcano <- function(p_column, cutoff, statistic_label, file_tag) {
     ggplot2::geom_point(alpha = .55, size = 1.2) +
     ggplot2::geom_vline(xintercept = c(-cfg$volcano_logFC_cutoff, cfg$volcano_logFC_cutoff), linetype = 2, color = "grey50") +
     ggplot2::geom_hline(yintercept = -log10(cutoff), linetype = 2, color = "grey50") +
-    ggrepel::geom_text_repel(data = label_genes, ggplot2::aes(label = SYMBOL), size = 3, max.overlaps = Inf) +
+    ggrepel::geom_text_repel(data = label_genes, ggplot2::aes(label = DISPLAY_NAME), size = 3, max.overlaps = Inf) +
     ggplot2::scale_color_manual(values = c(Down = "#4DBBD5", NS = "#BDBDBD", Up = "#E64B35")) +
     ggplot2::labs(
       title = paste(cfg$dataset_id, cfg$case_group, "vs", cfg$control_group, "-", statistic_label),
@@ -86,12 +87,6 @@ if (cfg$downstream_deg_method == "limma") {
 }
 cat("Heatmap DEG source:", cfg$downstream_deg_method, "\n")
 deg <- read.delim(deg_file, check.names = FALSE)
-existing_heatmaps <- list.files(figure_dir, full.names = TRUE)
-existing_heatmaps <- existing_heatmaps[
-  startsWith(basename(existing_heatmaps), paste0(prefix, "_top")) &
-    grepl("_DEG_heatmap\\.(png|pdf)$", basename(existing_heatmaps))
-]
-unlink(existing_heatmaps)
 
 # Skip heatmap if too few genes
 if (!nrow(deg)) {
@@ -99,29 +94,81 @@ if (!nrow(deg)) {
 } else if (nrow(deg) == 1) {
   cat("Only one DEG available. Clustered heatmap skipped.\n")
 } else {
+  # Select heatmap gene type; filtering affects visualization only
+  if (cfg$heatmap_gene_filter == "annotated") {
+    keep_type <- (!is.na(deg$SYMBOL) & deg$SYMBOL != "") |
+      (!is.na(deg$ENSEMBL_GENE_NAME) & deg$ENSEMBL_GENE_NAME != "")
+    deg <- deg[keep_type, , drop = FALSE]
+  } else if (cfg$heatmap_gene_filter == "protein_coding") {
+    deg <- deg[
+      !is.na(deg$GENE_BIOTYPE) & deg$GENE_BIOTYPE == "protein_coding",
+      , drop = FALSE
+    ]
+  }
+  cat("Heatmap gene filter:", cfg$heatmap_gene_filter, "\n")
+  cat("Genes after heatmap gene-type filtering:", nrow(deg), "\n")
+
+  if (nrow(deg) < 2) {
+    cat("Fewer than two genes remain after heatmap gene-type filtering.\n")
+    cat("Clustered heatmap skipped.\n")
+  } else {
   expr <- readRDS(file.path(project_dir, "datasets", "processed", paste0(cfg$dataset_id, "_bulk_workflow_expression_log2_filtered.rds")))
   deg <- deg[deg$ENSEMBL %in% rownames(expr), , drop = FALSE]
+
+  # Filter before ranking by absolute logFC
   deg <- head(deg[order(abs(deg$logFC), decreasing = TRUE), , drop = FALSE], cfg$heatmap_top_n)
 
   if (nrow(deg) < 2) {
     cat("Fewer than two DEG remain after expression matching. Clustered heatmap skipped.\n")
   } else {
     heat_expr <- expr[deg$ENSEMBL, metadata$sample, drop = FALSE]
-    labels <- ifelse(is.na(deg$SYMBOL) | deg$SYMBOL == "", deg$ENSEMBL, deg$SYMBOL)
-    rownames(heat_expr) <- make.unique(labels)
-    heat_expr <- heat_expr[apply(heat_expr, 1, sd) > 0, , drop = FALSE]
+    keep_sd <- apply(heat_expr, 1, sd) > 0
+    heat_expr <- heat_expr[keep_sd, , drop = FALSE]
+    deg <- deg[keep_sd, , drop = FALSE]
 
     if (nrow(heat_expr) < 2) {
       cat("Fewer than two DEG remain after SD filtering. Clustered heatmap skipped.\n")
     } else {
+      # Use DISPLAY_NAME only for plotting
+      rownames(heat_expr) <- make.unique(deg$DISPLAY_NAME)
+
+      # Save the genes actually used in this heatmap
+      heatmap_gene_columns <- intersect(
+        c(
+          "ENSEMBL", "DISPLAY_NAME", "SYMBOL", "ENSEMBL_GENE_NAME",
+          "GENE_BIOTYPE", "logFC", "P.Value", "adj.P.Val"
+        ),
+        names(deg)
+      )
+      heatmap_gene_file <- file.path(
+        de_dir,
+        paste0(
+          prefix, "_top", nrow(deg), "_", cfg$heatmap_gene_filter,
+          "_heatmap_genes.tsv"
+        )
+      )
+      write.table(
+        deg[, heatmap_gene_columns, drop = FALSE], heatmap_gene_file,
+        sep = "\t", quote = FALSE, row.names = FALSE, na = ""
+      )
+
       # Row Z-score for heatmap and metadata-based sample annotation
       heat_z <- t(scale(t(heat_expr)))
       annotation_col <- data.frame(Group = factor(metadata$group, levels = c(cfg$control_group, cfg$case_group)), row.names = metadata$sample)
       annotation_colors <- list(Group = setNames(c("#4DBBD5", "#F28E85"), c(cfg$control_group, cfg$case_group)))
-      heatmap_base <- file.path(figure_dir, paste0(prefix, "_top", nrow(heat_z), "_DEG_heatmap"))
+      # Keep filter mode in filenames so modes do not overwrite each other
+      heatmap_base <- file.path(
+        figure_dir,
+        paste0(
+          prefix, "_top", nrow(heat_z), "_", cfg$heatmap_gene_filter,
+          "_DEG_heatmap"
+        )
+      )
       pheatmap::pheatmap(heat_z, annotation_col = annotation_col, annotation_colors = annotation_colors, cluster_rows = TRUE, cluster_cols = TRUE, show_colnames = TRUE, border_color = NA, filename = paste0(heatmap_base, ".png"), width = 8, height = max(6, 2 + .18 * nrow(heat_z)))
       pheatmap::pheatmap(heat_z, annotation_col = annotation_col, annotation_colors = annotation_colors, cluster_rows = TRUE, cluster_cols = TRUE, show_colnames = TRUE, border_color = NA, filename = paste0(heatmap_base, ".pdf"), width = 8, height = max(6, 2 + .18 * nrow(heat_z)))
       cat("Heatmap genes:", nrow(heat_z), "\n")
+      cat("Heatmap gene table:", heatmap_gene_file, "\n")
     }
+  }
   }
 }

@@ -8,6 +8,8 @@
 
 Volcano 会同时输出 FDR 版和 nominal P-value 探索版，文件名明确标注所用显著性指标。
 
+Heatmap gene filtering: `heatmap_gene_filter` supports `all`, `annotated`, and `protein_coding` (default). Filtering affects heatmap visualization only; all genes remain in differential-expression results and enrichment analysis.
+
 ## 2. 输入方式
 
 - `config.yml`：项目路径、组名和分析阈值；路径相对于仓库根目录，`input_file` 和 `sample_metadata` 相对于 `project_dir`。
@@ -15,6 +17,8 @@ Volcano 会同时输出 FDR 版和 nominal P-value 探索版，文件名明确�
 - expression file：Excel 第一张表；包含配置指定的 gene ID 列以及 metadata 中的全部样本列。
 
 可从 `config_template.yml` 和 `sample_metadata_template.tsv` 复制后修改。
+
+Enrichment outputs include all results, nominal P exploratory results, and FDR-significant results. At pathway level, `P < 0.05` is exploratory and `FDR < 0.05` is formal.
 
 ## 3. Linux 终端使用方法
 

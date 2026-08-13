@@ -18,6 +18,8 @@ volcano_FDR_cutoff: 0.05
 volcano_logFC_cutoff: 1
 volcano_label_n: 5
 heatmap_top_n: 30
+heatmap_gene_filter: "protein_coding"
+enrichment_pvalue_cutoff: 0.05
 enrichment_FDR_cutoff: 0.05
 min_GS_size: 10
 max_GS_size: 500
