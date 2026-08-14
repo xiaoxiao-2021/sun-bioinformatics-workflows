@@ -12,6 +12,11 @@ fdr_tag <- format(cfg$TREAT_FDR_cutoff, trim = TRUE, scientific = FALSE)
 deg_fdr_tag <- format(cfg$deg_FDR_cutoff, trim = TRUE, scientific = FALSE)
 deg_lfc_tag <- format(cfg$deg_logFC_cutoff, trim = TRUE, scientific = FALSE)
 pvalue_tag <- format(cfg$pvalue_cutoff, trim = TRUE, scientific = FALSE)
+volcano_label_filter <- cfg$volcano_label_filter
+if (is.null(volcano_label_filter)) volcano_label_filter <- "protein_coding"
+if (!volcano_label_filter %in% c("all", "annotated", "protein_coding")) {
+  stop("volcano_label_filter must be 'all', 'annotated', or 'protein_coding'")
+}
 
 # Volcano plots use the same standard limma all-genes result
 volcano_all <- read.delim(file.path(de_dir, paste0(prefix, "_limma_all_genes_annotated.tsv")), check.names = FALSE)
@@ -36,13 +41,40 @@ save_volcano <- function(p_column, cutoff, statistic_label, file_tag) {
     pmax(volcano_plot_data[[p_column]], .Machine$double.xmin)
   )
 
-  label_available <- !is.na(volcano_plot_data$DISPLAY_NAME) &
-    volcano_plot_data$DISPLAY_NAME != ""
-  label_up <- volcano_plot_data[volcano_plot_data$change == "Up" & label_available, , drop = FALSE]
-  label_down <- volcano_plot_data[volcano_plot_data$change == "Down" & label_available, , drop = FALSE]
+  display_name <- trimws(volcano_plot_data$DISPLAY_NAME)
+  readable_display_name <- !is.na(display_name) & display_name != "" &
+    !toupper(display_name) %in% c("NA", "N/A", "UNKNOWN", "-") &
+    !grepl("^ENSG[0-9]+(\\.[0-9]+)?$", display_name, ignore.case = TRUE)
+  label_eligible <- rep(TRUE, nrow(volcano_plot_data))
+  if (volcano_label_filter == "annotated") {
+    label_eligible <- readable_display_name
+  } else if (volcano_label_filter == "protein_coding") {
+    label_eligible <- readable_display_name &
+      !is.na(volcano_plot_data$GENE_BIOTYPE) &
+      volcano_plot_data$GENE_BIOTYPE == "protein_coding"
+  }
+
+  label_up_candidates <- volcano_plot_data[
+    volcano_plot_data$change == "Up" & label_eligible,
+    , drop = FALSE
+  ]
+  label_down_candidates <- volcano_plot_data[
+    volcano_plot_data$change == "Down" & label_eligible,
+    , drop = FALSE
+  ]
+  label_up <- label_up_candidates
+  label_down <- label_down_candidates
   label_up <- head(label_up[order(label_up[[p_column]]), , drop = FALSE], cfg$volcano_label_n)
   label_down <- head(label_down[order(label_down[[p_column]]), , drop = FALSE], cfg$volcano_label_n)
   label_genes <- rbind(label_up, label_down)
+
+  cat(statistic_label, "volcano label summary:\n")
+  cat("Volcano label filter:", volcano_label_filter, "\n")
+  cat("Significant Up / Down:",
+      sum(volcano_data$change == "Up"), "/", sum(volcano_data$change == "Down"), "\n")
+  cat("Eligible Up / Down:",
+      nrow(label_up_candidates), "/", nrow(label_down_candidates), "\n")
+  cat("Shown Up / Down:", nrow(label_up), "/", nrow(label_down), "\n")
 
   volcano <- ggplot2::ggplot(
     volcano_plot_data,

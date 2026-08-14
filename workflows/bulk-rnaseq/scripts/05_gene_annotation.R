@@ -61,10 +61,17 @@ annotation <- data.frame(
 has_symbol <- !is.na(annotation$SYMBOL) & annotation$SYMBOL != ""
 has_ensembl_name <- !is.na(annotation$ENSEMBL_GENE_NAME) &
   annotation$ENSEMBL_GENE_NAME != ""
+loc_symbol <- has_symbol & grepl("^LOC[0-9]+$", annotation$SYMBOL, ignore.case = TRUE)
+readable_ensembl_name <- has_ensembl_name &
+  !grepl("^LOC[0-9]+$", annotation$ENSEMBL_GENE_NAME, ignore.case = TRUE) &
+  !grepl("^ENSG[0-9]+(\\.[0-9]+)?$", annotation$ENSEMBL_GENE_NAME, ignore.case = TRUE)
+prefer_ensembl_name <- loc_symbol & readable_ensembl_name
 annotation$DISPLAY_NAME <- annotation$ENSEMBL
 annotation$DISPLAY_NAME[has_ensembl_name] <-
   annotation$ENSEMBL_GENE_NAME[has_ensembl_name]
 annotation$DISPLAY_NAME[has_symbol] <- annotation$SYMBOL[has_symbol]
+annotation$DISPLAY_NAME[prefer_ensembl_name] <-
+  annotation$ENSEMBL_GENE_NAME[prefer_ensembl_name]
 
 if (nrow(annotation) != length(gene_ids) || anyDuplicated(annotation$ENSEMBL)) {
   stop("Master annotation must contain exactly one row per original ENSEMBL")
@@ -87,7 +94,10 @@ cat("ENSEMBL_GENE_NAME mapping rate:", mean(has_ensembl_name), "\n")
 cat("GENE_BIOTYPE mapping rate:", mean(!is.na(annotation$GENE_BIOTYPE) & annotation$GENE_BIOTYPE != ""), "\n")
 cat("Gene biotype distribution:\n")
 print(sort(table(annotation$GENE_BIOTYPE, useNA = "ifany"), decreasing = TRUE))
-cat("Number of genes using SYMBOL as DISPLAY_NAME:", sum(has_symbol), "\n")
-cat("Number using ENSEMBL_GENE_NAME fallback:", sum(!has_symbol & has_ensembl_name), "\n")
+cat("Number of genes using SYMBOL as DISPLAY_NAME:", sum(has_symbol & !prefer_ensembl_name), "\n")
+cat("Number using ENSEMBL_GENE_NAME as DISPLAY_NAME:",
+    sum((!has_symbol & has_ensembl_name) | prefer_ensembl_name), "\n")
+cat("Number of LOC symbols replaced by readable ENSEMBL_GENE_NAME:",
+    sum(prefer_ensembl_name), "\n")
 cat("Number still using raw ENSEMBL fallback:", sum(!has_symbol & !has_ensembl_name), "\n")
 cat("Saved:", annotation_file, "\n")

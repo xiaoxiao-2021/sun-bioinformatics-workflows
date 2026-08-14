@@ -14,7 +14,9 @@ required <- c(
   "heatmap_top_n", "heatmap_gene_filter", "enrichment_pvalue_cutoff",
   "enrichment_FDR_cutoff",
   "min_GS_size", "max_GS_size",
-  "show_category_n"
+  "show_category_n", "gsea_pvalue_cutoff", "gsea_FDR_cutoff",
+  "gsea_min_GS_size", "gsea_max_GS_size", "gsea_show_category_n",
+  "gsea_curve_n"
 )
 missing_keys <- required[!vapply(required, function(x) !is.null(config[[x]]), logical(1))]
 if (length(missing_keys)) stop("Missing config key(s): ", paste(missing_keys, collapse = ", "))
@@ -26,6 +28,21 @@ if (!config$downstream_deg_method %in% c("limma", "limma_pvalue", "treat")) {
 if (!config$heatmap_gene_filter %in% c("all", "annotated", "protein_coding")) {
   stop("heatmap_gene_filter must be 'all', 'annotated', or 'protein_coding'")
 }
+if (!is.null(config$volcano_label_filter) &&
+    !config$volcano_label_filter %in% c("all", "annotated", "protein_coding")) {
+  stop("volcano_label_filter must be 'all', 'annotated', or 'protein_coding'")
+}
+if (config$gsea_pvalue_cutoff <= 0 || config$gsea_pvalue_cutoff > 1 ||
+    config$gsea_FDR_cutoff <= 0 || config$gsea_FDR_cutoff > 1) {
+  stop("GSEA P-value and FDR cutoffs must be in (0, 1]")
+}
+if (config$gsea_min_GS_size < 1 ||
+    config$gsea_max_GS_size < config$gsea_min_GS_size) {
+  stop("GSEA gene-set size limits are invalid")
+}
+if (config$gsea_show_category_n < 1 || config$gsea_curve_n < 1) {
+  stop("GSEA plot counts must be positive")
+}
 
 project_dir <- normalizePath(config$project_dir, mustWork = TRUE)
 log_dir <- file.path(project_dir, "logs", config$dataset_id)
@@ -35,19 +52,20 @@ writeLines(paste("Pipeline started:", format(Sys.time())), log_file)
 
 script_arg <- grep("^--file=", commandArgs(), value = TRUE)
 workflow_dir <- dirname(normalizePath(sub("^--file=", "", script_arg[1]), mustWork = TRUE))
-scripts <- sprintf("%02d_%s.R", 1:9, c(
+scripts <- sprintf("%02d_%s.R", 1:11, c(
   "data_check", "filter_qc", "data_clean", "limma_DE", "gene_annotation",
-  "add_annotation", "visualization", "enrichment", "enrichment_visualization"
+  "add_annotation", "visualization", "enrichment", "enrichment_visualization",
+  "GSEA", "GSEA_visualization"
 ))
 labels <- c(
   "Data check", "Filter QC", "Data cleaning", "limma / TREAT",
   "Gene annotation", "Add annotation", "Visualization", "Enrichment",
-  "Enrichment visualization"
+  "Enrichment visualization", "GSEA", "GSEA visualization"
 )
 
 for (i in seq_along(scripts)) {
-  cat(sprintf("[%02d/09] %s\n", i, labels[i]))
-  cat(sprintf("\n[%02d/09] %s\n", i, labels[i]), file = log_file, append = TRUE)
+  cat(sprintf("[%02d/11] %s\n", i, labels[i]))
+  cat(sprintf("\n[%02d/11] %s\n", i, labels[i]), file = log_file, append = TRUE)
   output <- system2(
     "Rscript",
     c(file.path(workflow_dir, "scripts", scripts[i]), config_file),

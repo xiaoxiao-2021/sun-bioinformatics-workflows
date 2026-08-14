@@ -17,6 +17,7 @@ downstream_deg_method: "limma_pvalue"
 volcano_FDR_cutoff: 0.05
 volcano_logFC_cutoff: 1
 volcano_label_n: 5
+volcano_label_filter: "protein_coding"
 heatmap_top_n: 30
 heatmap_gene_filter: "protein_coding"
 enrichment_pvalue_cutoff: 0.05
@@ -24,3 +25,9 @@ enrichment_FDR_cutoff: 0.05
 min_GS_size: 10
 max_GS_size: 500
 show_category_n: 15
+gsea_pvalue_cutoff: 0.05
+gsea_FDR_cutoff: 0.05
+gsea_min_GS_size: 10
+gsea_max_GS_size: 500
+gsea_show_category_n: 15
+gsea_curve_n: 3
