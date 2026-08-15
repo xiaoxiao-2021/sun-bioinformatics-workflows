@@ -21,6 +21,8 @@ Heatmap gene filtering: `heatmap_gene_filter` supports `all`, `annotated`, and `
 
 Enrichment outputs include all results, nominal P exploratory results, and FDR-significant results. At pathway level, `P < 0.05` is exploratory and `FDR < 0.05` is formal.
 
+`enrichment_gene_logFC_cutoff` controls only the gene-level `|logFC|` threshold used to define the ORA foreground; `0` means no effect-size filtering. It does not change the ORA background universe.
+
 Steps 10-11 add GO Biological Process and KEGG GSEA using all limma-tested genes ranked by the moderated t statistic. Positive NES indicates enrichment in the configured case group; negative NES indicates the control group. Nominal P results are exploratory and FDR results are formal.
 
 ## 3. Linux 终端使用方法
@@ -32,7 +34,7 @@ cp workflows/bulk-rnaseq/config_template.yml \
   projects/U251_LM3_RNA-seq/config/LM3.yml
 nano projects/U251_LM3_RNA-seq/config/LM3.yml
 
-Rscript workflows/bulk-rnaseq/run_pipeline.R \projects/U251_LM3_RNA-seq/config/U251.yml
+Rscript workflows/bulk-rnaseq/run_pipeline.R \projects/U251_LM3_RNA-seq/config/LM3.yml
 ```
 
 运行日志位于 `<project_dir>/logs/<dataset_id>/pipeline.log`：

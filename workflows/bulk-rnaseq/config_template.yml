@@ -22,6 +22,9 @@ volcano_label_filter: "protein_coding"
 heatmap_top_n: 30
 # Heatmap only: all, annotated, or protein_coding
 heatmap_gene_filter: "protein_coding"
+# Gene-level effect-size cutoff used only for ORA foreground selection.
+# 0 means no |logFC| filtering.
+enrichment_gene_logFC_cutoff: 0.5
 enrichment_pvalue_cutoff: 0.05
 enrichment_FDR_cutoff: 0.05
 min_GS_size: 10

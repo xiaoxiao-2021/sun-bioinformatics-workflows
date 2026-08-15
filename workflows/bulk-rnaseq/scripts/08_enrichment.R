@@ -15,43 +15,145 @@ deg_lfc_tag <- format(cfg$deg_logFC_cutoff, trim = TRUE, scientific = FALSE)
 pvalue_tag <- format(cfg$pvalue_cutoff, trim = TRUE, scientific = FALSE)
 enrichment_p_tag <- format(cfg$enrichment_pvalue_cutoff, trim = TRUE, scientific = FALSE)
 enrichment_fdr_tag <- format(cfg$enrichment_FDR_cutoff, trim = TRUE, scientific = FALSE)
+enrichment_gene_logFC_cutoff <- cfg$enrichment_gene_logFC_cutoff
+if (is.null(enrichment_gene_logFC_cutoff)) {
+  enrichment_gene_logFC_cutoff <- cfg$deg_logFC_cutoff
+}
+if (is.null(enrichment_gene_logFC_cutoff)) {
+  stop("Missing both enrichment_gene_logFC_cutoff and fallback deg_logFC_cutoff")
+}
+if (length(enrichment_gene_logFC_cutoff) != 1 ||
+    !is.finite(enrichment_gene_logFC_cutoff) ||
+    enrichment_gene_logFC_cutoff < 0) {
+  stop("enrichment_gene_logFC_cutoff must be one finite, non-negative number")
+}
+enrichment_gene_lfc_tag <- format(
+  enrichment_gene_logFC_cutoff, trim = TRUE, scientific = FALSE
+)
 
 # Background: all standard limma-tested genes with mapped ENTREZID
-background_data <- read.delim(file.path(de_dir, paste0(prefix, "_limma_all_genes_annotated.tsv")), check.names = FALSE)
-background_entrez <- unique(as.character(background_data$ENTREZID[!is.na(background_data$ENTREZID) & background_data$ENTREZID != ""]))
+background_data <- read.delim(
+  file.path(de_dir, paste0(prefix, "_limma_all_genes_annotated.tsv")),
+  check.names = FALSE, stringsAsFactors = FALSE
+)
+background_valid_entrez <- !is.na(background_data$ENTREZID) &
+  background_data$ENTREZID != ""
+background_entrez <- unique(as.character(background_data$ENTREZID[background_valid_entrez]))
 
-# Select downstream DEG source
+# Build ORA foreground independently from visualization/DEG-table effect-size filters.
 if (cfg$downstream_deg_method == "limma") {
-  deg_file <- file.path(
-    de_dir,
-    paste0(prefix, "_limma_FDR", deg_fdr_tag, "_logFC", deg_lfc_tag, "_DEG_annotated.tsv")
+  foreground_candidates <- background_data[
+    !is.na(background_data$adj.P.Val) &
+      background_data$adj.P.Val < cfg$deg_FDR_cutoff &
+      is.finite(background_data$logFC) &
+      abs(background_data$logFC) >= enrichment_gene_logFC_cutoff &
+      background_data$logFC != 0,
+    , drop = FALSE
+  ]
+  foreground_significance_label <- paste("Gene FDR cutoff:", cfg$deg_FDR_cutoff)
+  ora_base <- paste0(
+    prefix, "_ORA_geneFDR", deg_fdr_tag,
+    "_logFC", enrichment_gene_lfc_tag
   )
 } else if (cfg$downstream_deg_method == "limma_pvalue") {
-  deg_file <- file.path(
-    de_dir,
-    paste0(prefix, "_limma_P", pvalue_tag, "_logFC", deg_lfc_tag, "_DEG_annotated.tsv")
+  foreground_candidates <- background_data[
+    !is.na(background_data$P.Value) &
+      background_data$P.Value < cfg$pvalue_cutoff &
+      is.finite(background_data$logFC) &
+      abs(background_data$logFC) >= enrichment_gene_logFC_cutoff &
+      background_data$logFC != 0,
+    , drop = FALSE
+  ]
+  foreground_significance_label <- paste("Gene P-value cutoff:", cfg$pvalue_cutoff)
+  ora_base <- paste0(
+    prefix, "_ORA_geneP", pvalue_tag,
+    "_logFC", enrichment_gene_lfc_tag
   )
 } else {
-  deg_file <- file.path(
+  treat_file <- file.path(
     de_dir,
     paste0(prefix, "_TREAT_lfc", lfc_tag, "_FDR", fdr_tag, "_DEG_annotated.tsv")
   )
+  foreground_candidates <- read.delim(
+    treat_file, check.names = FALSE, stringsAsFactors = FALSE
+  )
+  foreground_candidates <- foreground_candidates[
+    is.finite(foreground_candidates$logFC) & foreground_candidates$logFC != 0,
+    , drop = FALSE
+  ]
+  foreground_significance_label <- paste0(
+    "TREAT hypothesis: |logFC| > ", cfg$TREAT_lfc_cutoff,
+    "; FDR < ", cfg$TREAT_FDR_cutoff
+  )
+  ora_base <- paste0(
+    prefix, "_ORA_TREAT_lfc", lfc_tag, "_FDR", fdr_tag
+  )
 }
-deg <- read.delim(deg_file, check.names = FALSE)
-cat("ORA DEG source:", cfg$downstream_deg_method, "\n")
 
-# Build ORA foreground
-up_entrez <- unique(as.character(deg$ENTREZID[deg$logFC > 0 & !is.na(deg$ENTREZID) & deg$ENTREZID != ""]))
-down_entrez <- unique(as.character(deg$ENTREZID[deg$logFC < 0 & !is.na(deg$ENTREZID) & deg$ENTREZID != ""]))
-cat("ORA background:", length(background_entrez), "genes\n")
-cat("ORA foreground: Up", length(up_entrez), "Down", length(down_entrez), "\n")
+# logFC defines foreground eligibility and direction only; enrichGO/enrichKEGG
+# receive gene IDs, the unchanged universe, and pathway membership—not logFC.
+foreground_candidates$direction <- ifelse(
+  foreground_candidates$logFC > 0, "UP", "DOWN"
+)
+foreground_valid_entrez <- !is.na(foreground_candidates$ENTREZID) &
+  foreground_candidates$ENTREZID != ""
+foreground_mapped <- foreground_candidates[foreground_valid_entrez, , drop = FALSE]
+foreground_mapped$ENTREZID <- as.character(foreground_mapped$ENTREZID)
+# ORA consumes unique ENTREZID values; retain one annotated row per actual input ID.
+foreground_mapped <- foreground_mapped[
+  !duplicated(foreground_mapped$ENTREZID), , drop = FALSE
+]
+up_entrez <- foreground_mapped$ENTREZID[foreground_mapped$direction == "UP"]
+down_entrez <- foreground_mapped$ENTREZID[foreground_mapped$direction == "DOWN"]
+
+foreground_columns <- intersect(
+  c(
+    "ENSEMBL", "SYMBOL", "ENTREZID", "DISPLAY_NAME", "GENE_BIOTYPE",
+    "logFC", "P.Value", "adj.P.Val", "direction"
+  ),
+  names(foreground_mapped)
+)
+foreground_file <- file.path(
+  result_dir, paste0(ora_base, "_foreground_genes.tsv")
+)
+write.table(
+  foreground_mapped[, foreground_columns, drop = FALSE], foreground_file,
+  sep = "\t", quote = FALSE, row.names = FALSE, na = ""
+)
+
+cat("ORA background definition:\n")
+cat("all limma-tested genes with valid ENTREZID\n")
+cat("Background genes:", length(background_entrez), "\n\n")
+cat("============================================================\n")
+cat("ORA foreground summary\n")
+cat("============================================================\n")
+cat("Method:", cfg$downstream_deg_method, "\n")
+cat(foreground_significance_label, "\n")
+if (cfg$downstream_deg_method == "treat") {
+  cat("Gene |logFC| cutoff: not additionally applied for TREAT\n")
+} else {
+  cat("Gene |logFC| cutoff:", enrichment_gene_logFC_cutoff, "\n")
+  if (enrichment_gene_logFC_cutoff == 0) {
+    cat("Gene |logFC| cutoff = 0 -> no effect-size filtering\n")
+  }
+}
+cat("\nBackground genes with valid ENTREZID:", length(background_entrez), "\n\n")
+cat("Foreground before ENTREZID mapping:\n")
+cat("Total:", nrow(foreground_candidates), "\n")
+cat("UP:", sum(foreground_candidates$direction == "UP"), "\n")
+cat("DOWN:", sum(foreground_candidates$direction == "DOWN"), "\n\n")
+cat("Foreground with valid ENTREZID:\n")
+cat("Total:", nrow(foreground_mapped), "\n")
+cat("UP:", length(up_entrez), "\n")
+cat("DOWN:", length(down_entrez), "\n")
+cat("Foreground audit table:", foreground_file, "\n")
 if (!length(up_entrez)) cat("No UP genes available for ORA. GO/KEGG UP skipped.\n")
 if (!length(down_entrez)) cat("No DOWN genes available for ORA. GO/KEGG DOWN skipped.\n")
 
 # Run the four requested ORA analyses with identical output handling
 run_ora <- function(genes, database, direction) {
   analysis_name <- paste(database, direction, sep = "_")
-  output_base <- paste(prefix, analysis_name, sep = "_")
+  output_base <- paste(ora_base, analysis_name, sep = "_")
   empty_result <- data.frame(
     ID = character(), Description = character(), GeneRatio = character(),
     Count = integer(), pvalue = numeric(), p.adjust = numeric(),

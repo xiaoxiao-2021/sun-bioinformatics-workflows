@@ -25,6 +25,18 @@ if (config$case_group == config$control_group) stop("case_group and control_grou
 if (!config$downstream_deg_method %in% c("limma", "limma_pvalue", "treat")) {
   stop("downstream_deg_method must be 'limma', 'limma_pvalue', or 'treat'")
 }
+enrichment_gene_logFC_cutoff <- config$enrichment_gene_logFC_cutoff
+if (is.null(enrichment_gene_logFC_cutoff)) {
+  enrichment_gene_logFC_cutoff <- config$deg_logFC_cutoff
+}
+if (is.null(enrichment_gene_logFC_cutoff)) {
+  stop("Missing both enrichment_gene_logFC_cutoff and fallback deg_logFC_cutoff")
+}
+if (length(enrichment_gene_logFC_cutoff) != 1 ||
+    !is.finite(enrichment_gene_logFC_cutoff) ||
+    enrichment_gene_logFC_cutoff < 0) {
+  stop("enrichment_gene_logFC_cutoff must be one finite, non-negative number")
+}
 if (!config$heatmap_gene_filter %in% c("all", "annotated", "protein_coding")) {
   stop("heatmap_gene_filter must be 'all', 'annotated', or 'protein_coding'")
 }

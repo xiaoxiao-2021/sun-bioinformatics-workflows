@@ -10,27 +10,71 @@ dir.create(plot_data_dir, recursive = TRUE, showWarnings = FALSE)
 prefix <- paste(cfg$dataset_id, cfg$case_group, "vs", cfg$control_group, sep = "_")
 enrichment_p_tag <- format(cfg$enrichment_pvalue_cutoff, trim = TRUE, scientific = FALSE)
 enrichment_fdr_tag <- format(cfg$enrichment_FDR_cutoff, trim = TRUE, scientific = FALSE)
+enrichment_gene_logFC_cutoff <- cfg$enrichment_gene_logFC_cutoff
+if (is.null(enrichment_gene_logFC_cutoff)) {
+  enrichment_gene_logFC_cutoff <- cfg$deg_logFC_cutoff
+}
+if (is.null(enrichment_gene_logFC_cutoff)) {
+  stop("Missing both enrichment_gene_logFC_cutoff and fallback deg_logFC_cutoff")
+}
+enrichment_gene_lfc_tag <- format(
+  enrichment_gene_logFC_cutoff, trim = TRUE, scientific = FALSE
+)
+pvalue_tag <- format(cfg$pvalue_cutoff, trim = TRUE, scientific = FALSE)
+deg_fdr_tag <- format(cfg$deg_FDR_cutoff, trim = TRUE, scientific = FALSE)
+lfc_tag <- format(cfg$TREAT_lfc_cutoff, trim = TRUE, scientific = FALSE)
+fdr_tag <- format(cfg$TREAT_FDR_cutoff, trim = TRUE, scientific = FALSE)
+
+if (cfg$downstream_deg_method == "limma") {
+  ora_base <- paste0(
+    prefix, "_ORA_geneFDR", deg_fdr_tag,
+    "_logFC", enrichment_gene_lfc_tag
+  )
+  foreground_label <- paste0(
+    "Gene FDR < ", cfg$deg_FDR_cutoff,
+    "; |logFC| >= ", enrichment_gene_logFC_cutoff
+  )
+} else if (cfg$downstream_deg_method == "limma_pvalue") {
+  ora_base <- paste0(
+    prefix, "_ORA_geneP", pvalue_tag,
+    "_logFC", enrichment_gene_lfc_tag
+  )
+  foreground_label <- paste0(
+    "Gene P < ", cfg$pvalue_cutoff,
+    "; |logFC| >= ", enrichment_gene_logFC_cutoff
+  )
+} else {
+  ora_base <- paste0(
+    prefix, "_ORA_TREAT_lfc", lfc_tag, "_FDR", fdr_tag
+  )
+  foreground_label <- paste0(
+    "TREAT |logFC| > ", cfg$TREAT_lfc_cutoff,
+    "; FDR < ", cfg$TREAT_FDR_cutoff
+  )
+}
 
 # Draw either formal FDR or exploratory nominal P enrichment
 make_dotplot <- function(database, direction, result_type) {
   analysis_name <- paste(database, direction, sep = "_")
   analysis_label <- if (database == "GO_BP") "GO Biological Process" else "KEGG Pathways"
   direction_label <- if (direction == "UP") "Upregulated Genes" else "Downregulated Genes"
-  output_base <- paste(prefix, analysis_name, sep = "_")
+  output_base <- paste(ora_base, analysis_name, sep = "_")
 
   if (result_type == "FDR") {
     result_tag <- paste0("FDR", enrichment_fdr_tag)
     metric_column <- "p.adjust"
     metric_label <- "-log10(FDR)"
     cutoff <- cfg$enrichment_FDR_cutoff
-    subtitle <- paste("FDR <", cutoff)
+    subtitle <- paste0("FDR < ", cutoff, "\n", foreground_label)
     missing_message <- "No FDR enrichment result for"
   } else {
     result_tag <- paste0("P", enrichment_p_tag)
     metric_column <- "pvalue"
     metric_label <- "-log10(P.Value)"
     cutoff <- cfg$enrichment_pvalue_cutoff
-    subtitle <- paste("Exploratory: nominal P <", cutoff)
+    subtitle <- paste0(
+      "Exploratory: nominal P < ", cutoff, "\n", foreground_label
+    )
     missing_message <- "No nominal enrichment result for"
   }
 
