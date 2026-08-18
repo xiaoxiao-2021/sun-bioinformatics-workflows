@@ -36,6 +36,11 @@ volcano_tag <- paste0(
   "_logFC", cutoff_tag(config$volcano_logFC_cutoff),
   "_label", as.integer(config$volcano_label_n)
 )
+volcano_p_tag <- paste0(
+  "p", cutoff_tag(config$volcano_pvalue_cutoff),
+  "_logFC", cutoff_tag(config$volcano_logFC_cutoff),
+  "_label", as.integer(config$volcano_label_n)
+)
 heatmap_tag <- paste0(formal_de_tag, "_top", as.integer(config$heatmap_top_n))
 
 data$logFC <- suppressWarnings(as.numeric(data$logFC))
@@ -61,50 +66,62 @@ utils::write.table(
   exploratory_de, file.path(result_dir, paste0(config$dataset_id, "_DE_exploratory_", exploratory_de_tag, ".tsv")),
   sep = "\t", quote = FALSE, row.names = FALSE, na = ""
 )
-positive_q <- data$Q.Value[is.finite(data$Q.Value) & data$Q.Value > 0]
-q_floor <- if (length(positive_q)) min(positive_q) / 10 else .Machine$double.xmin
-data$plot_q <- ifelse(is.finite(data$Q.Value), pmax(data$Q.Value, q_floor), NA_real_)
-data$significance <- "Not significant"
-formal <- is.finite(data$Q.Value) & data$Q.Value < config$volcano_qvalue_cutoff &
-  is.finite(data$logFC) & abs(data$logFC) >= config$volcano_logFC_cutoff
-data$significance[formal & data$logFC > 0] <- "Up"
-data$significance[formal & data$logFC < 0] <- "Down"
-data$significance <- factor(data$significance, levels = c("Down", "Not significant", "Up"))
 data$plot_label <- ifelse(!is.na(data$SYMBOL) & nzchar(data$SYMBOL), data$SYMBOL, data$PROTEIN_ID)
 
-pick_labels <- function(direction) {
-  candidates <- which(data$significance == direction & !is.na(data$plot_label) & nzchar(data$plot_label))
-  if (!length(candidates)) return(integer())
-  order_values <- order(data$Q.Value[candidates], -abs(data$logFC[candidates]), na.last = TRUE)
-  head(candidates[order_values], as.integer(config$volcano_label_n))
+make_volcano <- function(stat_col, cutoff, evidence_label, filename_tag) {
+  positive_values <- data[[stat_col]][is.finite(data[[stat_col]]) & data[[stat_col]] > 0]
+  floor_value <- if (length(positive_values)) min(positive_values) / 10 else .Machine$double.xmin
+  plot_y <- pmax(data[[stat_col]], floor_value)
+  significance <- rep("Not significant", nrow(data))
+  pass <- is.finite(data[[stat_col]]) & data[[stat_col]] < cutoff &
+    is.finite(data$logFC) & abs(data$logFC) >= config$volcano_logFC_cutoff
+  significance[pass & data$logFC > 0] <- "Up"
+  significance[pass & data$logFC < 0] <- "Down"
+  significance <- factor(significance, levels = c("Down", "Not significant", "Up"))
+  plot_data <- data
+  plot_data$plot_y <- plot_y
+  plot_data$significance <- significance
+  candidates_for_labels <- function(direction) {
+    candidates <- which(significance == direction & !is.na(data$plot_label) & nzchar(data$plot_label))
+    if (!length(candidates)) return(integer())
+    order_values <- order(data[[stat_col]][candidates], -abs(data$logFC[candidates]), na.last = TRUE)
+    head(candidates[order_values], as.integer(config$volcano_label_n))
+  }
+  label_rows <- c(candidates_for_labels("Up"), candidates_for_labels("Down"))
+  label_table <- data[label_rows, c("PROTEIN_ID", "SYMBOL", "DESCRIPTION", "logFC", "P.Value", "Q.Value"), drop = FALSE]
+  label_table$significance <- significance[label_rows]
+  utils::write.table(
+    label_table,
+    file.path(result_dir, paste0(config$dataset_id, "_volcano_labeled_", filename_tag, ".tsv")),
+    sep = "\t", quote = FALSE, row.names = FALSE, na = ""
+  )
+  x_label <- if (!is.null(config$case_group) && !is.null(config$control_group)) {
+    paste0("Vendor log2 fold change (", config$case_group, " - ", config$control_group, ")")
+  } else {
+    "Vendor log2 fold change"
+  }
+  volcano <- ggplot2::ggplot(plot_data, ggplot2::aes(x = logFC, y = -log10(plot_y), color = significance)) +
+    ggplot2::geom_point(alpha = 0.75, size = 1.7, na.rm = TRUE) +
+    ggplot2::geom_vline(xintercept = c(-1, 1) * config$volcano_logFC_cutoff, linetype = "dashed", color = "grey45") +
+    ggplot2::geom_hline(yintercept = -log10(cutoff), linetype = "dashed", color = "grey45") +
+    ggplot2::geom_text(
+      data = plot_data[label_rows, , drop = FALSE], ggplot2::aes(label = plot_label),
+      color = "black", size = 3, check_overlap = TRUE, vjust = -0.6, show.legend = FALSE
+    ) +
+    ggplot2::scale_color_manual(values = c(Down = "#377EB8", `Not significant` = "#BDBDBD", Up = "#E64B35")) +
+    ggplot2::labs(
+      title = paste0(config$dataset_id, ": vendor ", evidence_label, " volcano"),
+      subtitle = sprintf("%s < %g and |log2FC| >= %g", evidence_label, cutoff, config$volcano_logFC_cutoff),
+      x = x_label, y = paste0("-log10(vendor ", evidence_label, ")"), color = NULL
+    ) +
+    ggplot2::theme_classic(base_size = 11) + ggplot2::theme(legend.position = "top")
+  volcano_stem <- file.path(figure_dir, paste0(config$dataset_id, "_volcano_vendor_", filename_tag))
+  ggplot2::ggsave(paste0(volcano_stem, ".png"), volcano, width = 8, height = 6, dpi = 300)
+  ggplot2::ggsave(paste0(volcano_stem, ".pdf"), volcano, width = 8, height = 6)
 }
-label_rows <- c(pick_labels("Up"), pick_labels("Down"))
-label_table <- data[label_rows, c("PROTEIN_ID", "SYMBOL", "DESCRIPTION", "logFC", "P.Value", "Q.Value", "significance"), drop = FALSE]
-utils::write.table(
-  label_table,
-  file.path(result_dir, paste0(config$dataset_id, "_volcano_labeled_", volcano_tag, ".tsv")),
-  sep = "\t", quote = FALSE, row.names = FALSE, na = ""
-)
 
-volcano <- ggplot2::ggplot(data, ggplot2::aes(x = logFC, y = -log10(plot_q), color = significance)) +
-  ggplot2::geom_point(alpha = 0.75, size = 1.7, na.rm = TRUE) +
-  ggplot2::geom_vline(xintercept = c(-1, 1) * config$volcano_logFC_cutoff, linetype = "dashed", color = "grey45") +
-  ggplot2::geom_hline(yintercept = -log10(config$volcano_qvalue_cutoff), linetype = "dashed", color = "grey45") +
-  ggplot2::geom_text(
-    data = data[label_rows, , drop = FALSE], ggplot2::aes(label = plot_label),
-    color = "black", size = 3, check_overlap = TRUE, vjust = -0.6, show.legend = FALSE
-  ) +
-  ggplot2::scale_color_manual(values = c(Down = "#377EB8", `Not significant` = "#BDBDBD", Up = "#E64B35")) +
-  ggplot2::labs(
-    title = paste0(config$dataset_id, ": vendor q-value volcano"),
-    subtitle = sprintf("Formal: q < %g and |log2FC| >= %g", config$volcano_qvalue_cutoff, config$volcano_logFC_cutoff),
-    x = paste0("Vendor log2 fold change (", config$case_group, " - ", config$control_group, ")"),
-    y = expression(-log[10](vendor~q-value)), color = NULL
-  ) +
-  ggplot2::theme_classic(base_size = 11) + ggplot2::theme(legend.position = "top")
-volcano_stem <- file.path(figure_dir, paste0(config$dataset_id, "_volcano_vendor_", volcano_tag))
-ggplot2::ggsave(paste0(volcano_stem, ".png"), volcano, width = 8, height = 6, dpi = 300)
-ggplot2::ggsave(paste0(volcano_stem, ".pdf"), volcano, width = 8, height = 6)
+make_volcano("Q.Value", config$volcano_qvalue_cutoff, "q-value", volcano_tag)
+make_volcano("P.Value", config$volcano_pvalue_cutoff, "p-value", volcano_p_tag)
 
 if (!isTRUE(flags$abundance_scale_ok)) {
   cat("Heatmap skipped: abundance scale did not pass the vendor-logFC agreement check.\n")

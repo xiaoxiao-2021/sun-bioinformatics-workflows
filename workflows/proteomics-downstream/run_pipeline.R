@@ -13,7 +13,7 @@ required <- c(
   "vendor_logFC_col", "vendor_pvalue_col", "vendor_qvalue_col",
   "expression_already_log2", "deg_pvalue_cutoff", "deg_qvalue_cutoff",
   "deg_logFC_cutoff", "volcano_qvalue_cutoff", "volcano_logFC_cutoff",
-  "volcano_label_n", "heatmap_top_n", "enrichment_gene_logFC_cutoff",
+  "volcano_pvalue_cutoff", "volcano_label_n", "heatmap_top_n", "enrichment_gene_logFC_cutoff",
   "enrichment_pvalue_cutoff", "enrichment_qvalue_cutoff", "min_GS_size",
   "max_GS_size", "show_category_n", "gsea_pvalue_cutoff",
   "gsea_FDR_cutoff", "gsea_min_GS_size", "gsea_max_GS_size",
@@ -22,7 +22,16 @@ required <- c(
 missing_keys <- required[!required %in% names(config)]
 if (length(missing_keys)) stop("Missing config key(s): ", paste(missing_keys, collapse = ", "))
 if (!grepl("^[A-Za-z0-9._-]+$", config$dataset_id)) stop("dataset_id contains unsafe characters")
-if (identical(config$case_group, config$control_group)) stop("case_group and control_group must differ")
+if (is.null(config$sample_metadata)) {
+  if (xor(is.null(config$case_group), is.null(config$control_group))) {
+    stop("When sample_metadata is null, case_group and control_group must both be null or both be provided")
+  }
+} else {
+  if (is.null(config$case_group) || is.null(config$control_group)) {
+    stop("case_group and control_group are required when sample_metadata is provided")
+  }
+  if (identical(config$case_group, config$control_group)) stop("case_group and control_group must differ")
+}
 if (!is.logical(config$gsea_draw_curves) || length(config$gsea_draw_curves) != 1L || is.na(config$gsea_draw_curves)) {
   stop("gsea_draw_curves must be true or false")
 }

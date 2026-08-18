@@ -1,15 +1,15 @@
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 1L) stop("01_import_and_standardize.R requires one config path")
-for (package in c("yaml", "readxl")) {
-  if (!requireNamespace(package, quietly = TRUE)) stop("Missing R package: ", package)
-}
+if (!requireNamespace("yaml", quietly = TRUE)) stop("Missing R package: yaml")
 
 config <- yaml::read_yaml(normalizePath(args[[1]], mustWork = TRUE))
 project_dir <- normalizePath(config$project_dir, mustWork = TRUE)
 input_file <- file.path(project_dir, config$input_file)
-if (!file.exists(input_file)) stop("Input Excel file not found: ", input_file)
-if (!config$input_sheet %in% readxl::excel_sheets(input_file)) {
-  stop("Excel sheet not found: ", config$input_sheet)
+if (!file.exists(input_file)) stop("Input file not found: ", input_file)
+
+input_ext <- tolower(tools::file_ext(input_file))
+if (!input_ext %in% c("csv", "xlsx", "xls")) {
+  stop("Unsupported input file type .", input_ext, "; use .csv, .xlsx, or .xls")
 }
 
 metadata <- NULL
@@ -28,13 +28,27 @@ if (!is.null(config$sample_metadata)) {
   }
 }
 
-raw <- as.data.frame(
-  readxl::read_excel(input_file, sheet = config$input_sheet, .name_repair = "minimal"),
-  check.names = FALSE,
-  stringsAsFactors = FALSE
-)
-if (!nrow(raw)) stop("The configured Excel sheet contains no protein rows")
-if (anyDuplicated(names(raw))) stop("The Excel sheet contains duplicated column names")
+if (input_ext %in% c("xlsx", "xls")) {
+  if (!requireNamespace("readxl", quietly = TRUE)) stop("Missing R package for Excel input: readxl")
+  if (is.null(config$input_sheet) || !config$input_sheet %in% readxl::excel_sheets(input_file)) {
+    stop("Excel sheet not found: ", config$input_sheet)
+  }
+  raw <- as.data.frame(
+    readxl::read_excel(input_file, sheet = config$input_sheet, .name_repair = "minimal"),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+} else {
+  raw <- utils::read.csv(
+    input_file,
+    check.names = FALSE,
+    stringsAsFactors = FALSE,
+    na.strings = c("", "NA"),
+    fileEncoding = "UTF-8-BOM"
+  )
+}
+if (!nrow(raw)) stop("The configured input contains no protein rows")
+if (anyDuplicated(names(raw))) stop("The input contains duplicated column names")
 
 source_columns <- c(
   config$protein_id_col, config$gene_symbol_col, config$description_col,
@@ -49,7 +63,7 @@ if (gene_id_available) source_columns <- c(source_columns, config$gene_id_col)
 required_columns <- unique(c(source_columns, sample_ids))
 missing_columns <- setdiff(required_columns, names(raw))
 if (length(missing_columns)) {
-  stop("Required Excel column(s) missing: ", paste(missing_columns, collapse = ", "))
+  stop("Required input column(s) missing: ", paste(missing_columns, collapse = ", "))
 }
 
 as_numeric_checked <- function(x, label) {

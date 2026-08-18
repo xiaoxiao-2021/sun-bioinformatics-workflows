@@ -1,15 +1,15 @@
 # Proteomics downstream workflow
 
 This workflow starts from an **unscreened protein-level differential-expression
-Excel sheet** produced upstream. It does not perform raw-spectrum processing,
+CSV or Excel sheet** produced upstream. It does not perform raw-spectrum processing,
 protein identification, missing-value imputation, or vendor result replacement.
 
 ## Analysis branches
 
-- Volcano plots, heatmaps, and ORA use the vendor-provided `log2FoldChange`,
-  `p-value`, and `q-value`. The vendor q-value is retained as supplied and is
-  never recalculated. Formal q-value and exploratory nominal-p-value DE tables
-  are saved separately.
+- Volcano plots are emitted in two separate versions using the vendor-provided
+  statistics: a q-value/FDR version and a nominal p-value version. The vendor
+  q-value is retained as supplied and is never recalculated. Formal q-value and
+  exploratory nominal-p-value DE tables are saved separately.
 - ORA uses unique valid Entrez IDs. Its universe is the set of mapped proteins
   in the unscreened input, not the whole genome. Formal foregrounds use vendor
   q-value plus absolute log2 fold change; exploratory foregrounds use nominal
@@ -30,8 +30,9 @@ metadata against the Excel abundance columns and checks whether abundance-scale
 case-minus-control differences agree with the vendor log2 fold changes. It does
 not silently log-transform or otherwise change a mismatched abundance scale.
 
-For a simplified vendor-statistics-only sheet, set `sample_metadata: null`,
-`gene_id_col: null`, and `run_gsea: false`. Volcano and ORA remain available;
+For a simplified vendor-statistics-only sheet, keep the complete configuration
+below but set `sample_metadata: null`, `case_group: null`,
+`control_group: null`, `gene_id_col: null`, and `run_gsea: false`. Volcano and ORA remain available;
 the heatmap is skipped because there are no replicate-level abundance columns,
 and the runner skips both GSEA scripts with the normal message
 `GSEA skipped by config: run_gsea = false`.
@@ -56,7 +57,7 @@ Set `gsea_draw_curves: false` to skip individual enrichment-curve plots while
 retaining the GSEA NES dot plots and lollipop plots. `gsea_curve_n` is used only
 when curve drawing is enabled.
 
-Required R packages are `yaml`, `readxl`, `ggplot2`, `pheatmap`, `limma`,
+CSV inputs are read with base R; Excel inputs use `readxl`. Required R packages are `yaml`, `readxl`, `ggplot2`, `pheatmap`, `limma`,
 `clusterProfiler`, and `org.Hs.eg.db`. `AnnotationDbi` is required when
 SYMBOL-to-ENTREZID fallback mapping is used; `msigdbr` is required for GSEA,
 and `enrichplot` is required only when `gsea_draw_curves: true`.

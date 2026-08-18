@@ -3,7 +3,8 @@ project_dir: "projects/ADCY7_proteomics"
 input_file: "data/ADCY7_proteomics.xlsx"
 input_sheet: "差异表达矩阵(未筛选)"
 sample_metadata: "metadata/samples.tsv"
-# Set sample_metadata: null for vendor-statistics-only input without replicate columns.
+# For vendor-statistics-only input without replicate columns, set this to null
+# and set both case_group and control_group below to null.
 case_group: "ADCY7"
 control_group: "NC"
 protein_id_col: "Accession"
@@ -20,6 +21,7 @@ deg_pvalue_cutoff: 0.05
 deg_qvalue_cutoff: 0.05
 deg_logFC_cutoff: 0.5
 volcano_qvalue_cutoff: 0.05
+volcano_pvalue_cutoff: 0.05
 volcano_logFC_cutoff: 0.5
 volcano_label_n: 5
 heatmap_top_n: 30

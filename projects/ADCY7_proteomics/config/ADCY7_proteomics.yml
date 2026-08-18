@@ -18,6 +18,7 @@ deg_pvalue_cutoff: 0.05
 deg_qvalue_cutoff: 0.05
 deg_logFC_cutoff: 0.5
 volcano_qvalue_cutoff: 0.05
+volcano_pvalue_cutoff: 0.05
 volcano_logFC_cutoff: 0.5
 volcano_label_n: 5
 heatmap_top_n: 30

@@ -1,21 +1,22 @@
 dataset_id: "ADCY7_proteomics_2"
 project_dir: "projects/ADCY7_proteomics_2"
 
-input_file: "data/ADCY7_proteomics_2.xlsx"
-input_sheet: "差异表达矩阵(未筛选)"
+input_file: "data/核蛋白volcano-ADCY7-vs-NC(1).csv"
+input_sheet: null  # CSV input has no worksheet name.
 
-# 本批没有 sample-level abundance
+# This simplified batch has no replicate-level metadata or sample abundance.
 sample_metadata: null
+case_group: null
+control_group: null
 
-case_group: "ADCY7"
-control_group: "NC"
+expression_already_log2: true
 
 protein_id_col: "Accession"
 gene_symbol_col: "Gene Name"
 description_col: "Description"
 unique_peptides_col: "Unique peptides"
 
-# 本批没有 GeneID，后续由 SYMBOL 映射 ENTREZID
+# No vendor GeneID column: import maps SYMBOL -> ENTREZID with org.Hs.eg.db.
 gene_id_col: null
 
 vendor_logFC_col: "log2FoldChange"
@@ -27,10 +28,11 @@ deg_qvalue_cutoff: 0.05
 deg_logFC_cutoff: 0.5
 
 volcano_qvalue_cutoff: 0.05
+volcano_pvalue_cutoff: 0.05
 volcano_logFC_cutoff: 0.5
 volcano_label_n: 5
 
-# 没有 sample abundance，因此 heatmap 应自动 skip
+# No sample abundance: the heatmap branch skips after the volcano plot.
 heatmap_top_n: 30
 
 enrichment_gene_logFC_cutoff: 0.5
@@ -41,14 +43,12 @@ min_GS_size: 10
 max_GS_size: 500
 show_category_n: 15
 
-# 没有 moderated t，使用 pre-ranked score
-gsea_ranking_method: "signed_log10_p"
-
+# No sample-level abundance or moderated t: skip both GSEA scripts.
+run_gsea: false
 gsea_pvalue_cutoff: 0.05
 gsea_FDR_cutoff: 0.05
 gsea_min_GS_size: 10
 gsea_max_GS_size: 500
 gsea_show_category_n: 15
-
 gsea_draw_curves: false
 gsea_curve_n: 3
