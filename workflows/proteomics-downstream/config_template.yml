@@ -1,0 +1,39 @@
+dataset_id: "ADCY7_proteomics"
+project_dir: "projects/ADCY7_proteomics"
+input_file: "data/ADCY7_proteomics.xlsx"
+input_sheet: "差异表达矩阵(未筛选)"
+sample_metadata: "metadata/samples.tsv"
+# Set sample_metadata: null for vendor-statistics-only input without replicate columns.
+case_group: "ADCY7"
+control_group: "NC"
+protein_id_col: "Accession"
+gene_symbol_col: "Gene Name"
+description_col: "Description"
+unique_peptides_col: "Unique peptides"
+gene_id_col: null
+# If vendor GeneID is unavailable, SYMBOL is mapped to ENTREZID with org.Hs.eg.db.
+vendor_logFC_col: "log2FoldChange"
+vendor_pvalue_col: "p-value"
+vendor_qvalue_col: "q-value"
+expression_already_log2: true
+deg_pvalue_cutoff: 0.05
+deg_qvalue_cutoff: 0.05
+deg_logFC_cutoff: 0.5
+volcano_qvalue_cutoff: 0.05
+volcano_logFC_cutoff: 0.5
+volcano_label_n: 5
+heatmap_top_n: 30
+enrichment_gene_logFC_cutoff: 0.5
+enrichment_pvalue_cutoff: 0.05
+enrichment_qvalue_cutoff: 0.05
+min_GS_size: 10
+max_GS_size: 500
+show_category_n: 15
+gsea_pvalue_cutoff: 0.05
+gsea_FDR_cutoff: 0.05
+gsea_min_GS_size: 10
+gsea_max_GS_size: 500
+gsea_show_category_n: 15
+gsea_draw_curves: true
+gsea_curve_n: 3
+run_gsea: true
