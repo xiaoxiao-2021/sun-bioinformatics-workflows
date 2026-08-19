@@ -1,4 +1,4 @@
-input_file: "projects/ADCY7_proteomics/results/GSEA/ADCY7_proteomics_GSEA_Hallmark_all.tsv"
+input_file: "projects/U251_LM3_RNA-seq/results/LM3/GSEA/LM3_OE_vs_NC_GSEA_Hallmark_all.tsv"
 
 
 
@@ -11,7 +11,7 @@ color_by: "NES"
 
 size_by: "setSize"
 
-output_prefix: "projects/ADCY7_proteomics/figures/GSEA/ADCY7_proteomics_Hallmark_NES_summary"
+output_prefix: "projects/U251_LM3_RNA-seq/figures/U251_GSEA/U251_OE_vs_NC_Hallmark_NES_summary"
 
 width: 7
 height: 5

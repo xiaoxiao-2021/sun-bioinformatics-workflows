@@ -93,8 +93,7 @@ If the original result contains `enrichmentScore`, the reconstructed visual ES i
 Run from the repository root:
 
 ```bash
-Rscript docs/visualization_catalog/gsea_enrichment_curve/run_plot.R \
-  docs/visualization_catalog/gsea_enrichment_curve/config/plot_config.yml
+Rscript docs/visualization_catalog/gsea_enrichment_curve/run_plot.R \docs/visualization_catalog/gsea_enrichment_curve/config/plot_config.yml
 ```
 
 Defaults are `gsea_exponent = 1`, `width = 7`, `height = 5`, and `dpi = 300`. `case_group` and `control_group` must be explicitly supplied.

@@ -1,0 +1,18 @@
+input_file: "projects/U251_LM3_RNA-seq/results/U251/GSEA/U251_OE_vs_NC_GSEA_Hallmark_all.tsv"
+
+
+
+
+pathway_file: "projects/U251_LM3_RNA-seq/config/U251/GSEA_hallmarker_nes_summary/hallmark_pathways.yml"
+
+sort_by: "NES"
+
+color_by: "NES"
+
+size_by: "setSize"
+
+output_prefix: "projects/U251_LM3_RNA-seq/figures/U251_GSEA/U251_OE_vs_NC_Hallmark_NES_summary"
+
+width: 7
+height: 5
+dpi: 300
