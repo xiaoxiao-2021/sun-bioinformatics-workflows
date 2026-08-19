@@ -1,0 +1,18 @@
+input_file: "projects/ADCY7_proteomics/results/GSEA/ADCY7_proteomics_GSEA_Hallmark_all.tsv"
+
+
+
+
+pathway_file: "docs/visualization_catalog/gsea_hallmark_nes_summary/config/hallmark_pathways.yml"
+
+sort_by: "NES"
+
+color_by: "NES"
+
+size_by: "setSize"
+
+output_prefix: "projects/ADCY7_proteomics/figures/GSEA/ADCY7_proteomics_Hallmark_NES_summary"
+
+width: 7
+height: 5
+dpi: 300

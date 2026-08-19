@@ -1,5 +1,10 @@
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 1) stop("Expected one config.yml argument")
+for (package in c("yaml", "clusterProfiler", "org.Hs.eg.db", "msigdbr")) {
+  if (!requireNamespace(package, quietly = TRUE)) {
+    stop("Missing required ORA package: ", package)
+  }
+}
 cfg <- yaml::read_yaml(normalizePath(args[1], mustWork = TRUE))
 # KEGG REST can be slow; keep the same ORA method but allow a longer download.
 options(timeout = max(300, getOption("timeout")))
@@ -150,6 +155,70 @@ cat("Foreground audit table:", foreground_file, "\n")
 if (!length(up_entrez)) cat("No UP genes available for ORA. GO/KEGG UP skipped.\n")
 if (!length(down_entrez)) cat("No DOWN genes available for ORA. GO/KEGG DOWN skipped.\n")
 
+# Hallmark is an additional gene-set collection, not a new ORA method.  Build
+# this TERM2GENE object once and use the exact same object for both directional
+# enricher() calls and for the reproducibility snapshot.
+msig_args <- list(species = "Homo sapiens")
+msig_formals <- names(formals(msigdbr::msigdbr))
+if ("collection" %in% msig_formals) {
+  msig_args$collection <- "H"
+} else if ("category" %in% msig_formals) {
+  msig_args$category <- "H"
+} else {
+  stop("The installed msigdbr::msigdbr has no Hallmark collection argument")
+}
+hallmark <- tryCatch(
+  do.call(msigdbr::msigdbr, msig_args),
+  error = function(error) {
+    stop("Unable to retrieve the Hallmark gene-set collection: ", conditionMessage(error))
+  }
+)
+hallmark_gene_column <- if ("ncbi_gene" %in% names(hallmark)) {
+  "ncbi_gene"
+} else if ("entrez_gene" %in% names(hallmark)) {
+  "entrez_gene"
+} else {
+  stop("msigdbr Hallmark output has no Entrez gene column (ncbi_gene/entrez_gene)")
+}
+if (!"gs_name" %in% names(hallmark)) {
+  stop("msigdbr Hallmark output has no gs_name column")
+}
+hallmark_term2gene <- unique(data.frame(
+  TERM = as.character(hallmark$gs_name),
+  GENE = as.character(hallmark[[hallmark_gene_column]]),
+  stringsAsFactors = FALSE,
+  check.names = FALSE
+))
+hallmark_term2gene <- hallmark_term2gene[
+  !is.na(hallmark_term2gene$TERM) & nzchar(hallmark_term2gene$TERM) &
+    !is.na(hallmark_term2gene$GENE) & nzchar(hallmark_term2gene$GENE),
+  , drop = FALSE
+]
+if (!nrow(hallmark_term2gene)) {
+  stop("Hallmark TERM2GENE is empty after Entrez ID filtering")
+}
+hallmark_term2name <- if ("gs_description" %in% names(hallmark)) {
+  unique(data.frame(
+    TERM = as.character(hallmark$gs_name),
+    NAME = as.character(hallmark$gs_description),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  ))
+} else {
+  NULL
+}
+hallmark_snapshot_file <- file.path(
+  result_dir, paste0(ora_base, "_Hallmark_TERM2GENE.tsv")
+)
+write.table(
+  hallmark_term2gene, hallmark_snapshot_file,
+  sep = "\t", quote = FALSE, row.names = FALSE, na = ""
+)
+cat("Saved Hallmark TERM2GENE:", hallmark_snapshot_file, "\n")
+cat("Hallmark ORA background genes:", length(background_entrez), "\n")
+cat("Hallmark ORA foreground genes:", length(unique(c(up_entrez, down_entrez))), "\n")
+cat("Hallmark gene sets:", length(unique(hallmark_term2gene$TERM)), "\n")
+
 # Run the four requested ORA analyses with identical output handling
 run_ora <- function(genes, database, direction) {
   analysis_name <- paste(database, direction, sep = "_")
@@ -159,8 +228,14 @@ run_ora <- function(genes, database, direction) {
     Count = integer(), pvalue = numeric(), p.adjust = numeric(),
     stringsAsFactors = FALSE
   )
+  hallmark_empty_result <- data.frame(
+    ID = character(), Description = character(), GeneRatio = character(),
+    BgRatio = character(), pvalue = numeric(), p.adjust = numeric(),
+    qvalue = numeric(), geneID = character(), Count = integer(),
+    stringsAsFactors = FALSE, check.names = FALSE
+  )
   if (!length(genes)) {
-    all_result <- empty_result
+    all_result <- if (database == "Hallmark") hallmark_empty_result else empty_result
   } else if (database == "GO_BP") {
     enrichment <- tryCatch(
       clusterProfiler::enrichGO(
@@ -176,7 +251,7 @@ run_ora <- function(genes, database, direction) {
       }
     )
     all_result <- if (is.null(enrichment)) empty_result else as.data.frame(enrichment)
-  } else {
+  } else if (database == "KEGG") {
     enrichment <- tryCatch(
       clusterProfiler::enrichKEGG(
         gene = genes, universe = background_entrez, organism = "hsa",
@@ -189,6 +264,20 @@ run_ora <- function(genes, database, direction) {
       }
     )
     all_result <- if (is.null(enrichment)) empty_result else as.data.frame(enrichment)
+  } else {
+    enrichment <- tryCatch(
+      clusterProfiler::enricher(
+        gene = genes, universe = background_entrez,
+        TERM2GENE = hallmark_term2gene, TERM2NAME = hallmark_term2name,
+        pAdjustMethod = "BH", pvalueCutoff = 1, qvalueCutoff = 1,
+        minGSSize = cfg$min_GS_size, maxGSSize = cfg$max_GS_size
+      ),
+      error = function(e) {
+        cat("Hallmark ORA skipped for", direction, ":", conditionMessage(e), "\n")
+        NULL
+      }
+    )
+    all_result <- if (is.null(enrichment)) hallmark_empty_result else as.data.frame(enrichment)
   }
   # Exploratory nominal pathway result
   nominal_result <- if (nrow(all_result)) {
@@ -227,9 +316,31 @@ run_ora <- function(genes, database, direction) {
   if (!nrow(significant_result)) {
     cat("No FDR-significant enrichment result for", analysis_name, ".\n")
   }
+  invisible(all_result)
 }
 
 run_ora(up_entrez, "GO_BP", "UP")
 run_ora(down_entrez, "GO_BP", "DOWN")
 run_ora(up_entrez, "KEGG", "UP")
 run_ora(down_entrez, "KEGG", "DOWN")
+hallmark_up <- run_ora(up_entrez, "Hallmark", "UP")
+hallmark_down <- run_ora(down_entrez, "Hallmark", "DOWN")
+
+# Keep the existing UP/DOWN outputs and also provide one complete Hallmark
+# table for downstream catalog modules.  The direction column records which
+# existing foreground definition produced each row; no mixed-direction
+# activation statistic is inferred.
+add_direction <- function(result, direction) {
+  result$direction <- rep(direction, nrow(result))
+  result
+}
+hallmark_all <- rbind(
+  add_direction(hallmark_up, "UP"),
+  add_direction(hallmark_down, "DOWN")
+)
+write.table(
+  hallmark_all,
+  file.path(result_dir, paste0(ora_base, "_Hallmark_all.tsv")),
+  sep = "\t", quote = FALSE, row.names = FALSE, na = ""
+)
+cat("Hallmark ORA result pathways:", nrow(hallmark_all), "\n")

@@ -2,7 +2,7 @@ args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 1) stop("Expected one config.yml argument")
 cfg <- yaml::read_yaml(normalizePath(args[1], mustWork = TRUE))
 
-required_packages <- c("clusterProfiler", "org.Hs.eg.db")
+required_packages <- c("clusterProfiler", "org.Hs.eg.db", "msigdbr")
 missing_packages <- required_packages[
   !vapply(required_packages, requireNamespace, quietly = TRUE, FUN.VALUE = logical(1))
 ]
@@ -122,11 +122,64 @@ empty_gsea_result <- function() {
 }
 
 run_gsea <- function(database) {
-  database_label <- if (database == "GO_BP") "GO Biological Process" else "KEGG"
+  database_label <- switch(
+    database,
+    Hallmark = "Hallmark",
+    GO_BP = "GO Biological Process",
+    KEGG = "KEGG",
+    database
+  )
   set.seed(123)
   gsea_object <- tryCatch(
     {
-      if (database == "GO_BP") {
+      if (database == "Hallmark") {
+        msig_args <- list(species = "Homo sapiens")
+        msig_formals <- names(formals(msigdbr::msigdbr))
+        if ("collection" %in% msig_formals) {
+          msig_args$collection <- "H"
+        } else if ("category" %in% msig_formals) {
+          msig_args$category <- "H"
+        } else {
+          stop("The installed msigdbr::msigdbr has no Hallmark collection argument")
+        }
+        hallmark <- do.call(msigdbr::msigdbr, msig_args)
+        hallmark_gene_column <- if ("ncbi_gene" %in% names(hallmark)) {
+          "ncbi_gene"
+        } else if ("entrez_gene" %in% names(hallmark)) {
+          "entrez_gene"
+        } else {
+          stop("msigdbr Hallmark output has no Entrez gene column (ncbi_gene/entrez_gene)")
+        }
+        hallmark_t2g <- unique(data.frame(
+          TERM = as.character(hallmark$gs_name),
+          GENE = as.character(hallmark[[hallmark_gene_column]]),
+          stringsAsFactors = FALSE,
+          check.names = FALSE
+        ))
+        hallmark_t2g <- hallmark_t2g[
+          !is.na(hallmark_t2g$TERM) & nzchar(hallmark_t2g$TERM) &
+            !is.na(hallmark_t2g$GENE) & nzchar(hallmark_t2g$GENE),
+          , drop = FALSE
+        ]
+        if (!nrow(hallmark_t2g)) stop("Hallmark TERM2GENE is empty after Entrez ID filtering")
+        hallmark_t2g_file <- file.path(
+          result_dir, paste0(prefix, "_GSEA_Hallmark_TERM2GENE.tsv")
+        )
+        write.table(
+          hallmark_t2g, hallmark_t2g_file,
+          sep = "\t", quote = FALSE, row.names = FALSE, na = ""
+        )
+        cat("Hallmark GSEA ranked genes:", length(gene_list), "\n")
+        cat("Hallmark gene sets:", length(unique(hallmark_t2g$TERM)), "\n")
+        cat("Saved Hallmark TERM2GENE:", hallmark_t2g_file, "\n")
+        clusterProfiler::GSEA(
+          geneList = gene_list, TERM2GENE = hallmark_t2g,
+          exponent = 1, minGSSize = cfg$gsea_min_GS_size,
+          maxGSSize = cfg$gsea_max_GS_size, eps = 0,
+          pvalueCutoff = 1, pAdjustMethod = "BH", verbose = FALSE,
+          seed = TRUE, by = "fgsea"
+        )
+      } else if (database == "GO_BP") {
         clusterProfiler::gseGO(
           geneList = gene_list, ont = "BP",
           OrgDb = org.Hs.eg.db::org.Hs.eg.db, keyType = "ENTREZID",
@@ -256,6 +309,8 @@ make_leading_edge <- function(database, all_result) {
   cat("Leading-edge table:", output_file, "\n")
 }
 
+hallmark_gsea <- run_gsea("Hallmark")
+make_leading_edge("Hallmark", hallmark_gsea$result)
 go_gsea <- run_gsea("GO_BP")
 make_leading_edge("GO_BP", go_gsea$result)
 kegg_gsea <- run_gsea("KEGG")

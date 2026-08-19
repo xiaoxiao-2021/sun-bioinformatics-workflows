@@ -109,9 +109,32 @@ run_gsea <- function(database) {
       if ("collection" %in% msig_formals) msig_args$collection <- "H" else msig_args$category <- "H"
       hallmark <- do.call(msigdbr::msigdbr, msig_args)
       gene_column <- if ("ncbi_gene" %in% names(hallmark)) "ncbi_gene" else "entrez_gene"
-      term2gene <- unique(data.frame(term = hallmark$gs_name, gene = as.character(hallmark[[gene_column]]), stringsAsFactors = FALSE))
+      # Save the exact deduplicated TERM2GENE object used by this Hallmark GSEA.
+      # This snapshot keeps downstream enrichment curves/GSEA visualization
+      # aligned with the Hallmark gene-set membership used for this run.
+      hallmark_t2g <- unique(data.frame(
+        TERM = hallmark$gs_name,
+        GENE = as.character(hallmark[[gene_column]]),
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      ))
+      term2gene_output <- file.path(
+        result_dir,
+        paste0(config$dataset_id, "_GSEA_Hallmark_TERM2GENE.tsv")
+      )
+      utils::write.table(
+        hallmark_t2g,
+        file = term2gene_output,
+        sep = "\t",
+        quote = FALSE,
+        row.names = FALSE
+      )
+      cat("Saved Hallmark TERM2GENE snapshot:\n", term2gene_output, "\n", sep = "")
+      cat("Hallmark TERM2GENE rows: ", nrow(hallmark_t2g), "\n", sep = "")
+      cat("Hallmark gene sets: ", length(unique(hallmark_t2g$TERM)), "\n", sep = "")
+      cat("Hallmark unique genes: ", length(unique(hallmark_t2g$GENE)), "\n", sep = "")
       clusterProfiler::GSEA(
-        geneList = gene_list, TERM2GENE = term2gene, pvalueCutoff = 1,
+        geneList = gene_list, TERM2GENE = hallmark_t2g, pvalueCutoff = 1,
         pAdjustMethod = "BH", minGSSize = config$gsea_min_GS_size,
         maxGSSize = config$gsea_max_GS_size, eps = 0, verbose = FALSE,
         seed = TRUE, by = "fgsea"
