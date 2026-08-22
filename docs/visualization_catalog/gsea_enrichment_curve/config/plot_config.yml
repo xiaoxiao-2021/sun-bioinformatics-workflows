@@ -1,20 +1,20 @@
-gsea_result_file: "projects/U251_LM3_RNA-seq/results/U251/GSEA/U251_OE_vs_NC_GSEA_Hallmark_all.tsv"
+gsea_result_file: "projects/ADCY7_proteomics/results/GSEA/ADCY7_proteomics_GSEA_Hallmark_all.tsv"
 
-ranked_gene_file: "projects/U251_LM3_RNA-seq/results/U251/GSEA/U251_OE_vs_NC_GSEA_ranked_genes.tsv"
+ranked_gene_file: "projects/ADCY7_proteomics/results/GSEA/ADCY7_proteomics_GSEA_ranked_genes.tsv"
 
-term2gene_file: "projects/U251_LM3_RNA-seq/results/U251/GSEA/U251_OE_vs_NC_GSEA_Hallmark_TERM2GENE.tsv"
+term2gene_file: "projects/ADCY7_proteomics/results/GSEA/ADCY7_proteomics_GSEA_Hallmark_TERM2GENE.tsv"
 
 pathway_file: "docs/visualization_catalog/gsea_enrichment_curve/config/selected_pathways.yml"
 
 gene_id_column: "ENTREZID"
-rank_column: "t"
+rank_column: "limma_logFC"
 
-case_group: "OE"
+case_group: "ADCY7"
 control_group: "NC"
 
 gsea_exponent: 1
 
-output_dir: "projects/U251_LM3_RNA-seq/figures/U251_GSEA/U251_OE_vs_NC_Hallmark_curves"
+output_dir: "projects/ADCY7_proteomics/figures/ADCY7_proteomics_GSEA/ADCY7_proteomics_OE_vs_NC_Hallmark_curves"
 
 width: 7
 height: 5

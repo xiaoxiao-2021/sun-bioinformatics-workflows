@@ -1,0 +1,18 @@
+input_file: "projects/ADCY7_proteomics/results/GSEA/ADCY7_proteomics_GSEA_GO_BP_all.tsv"
+pathway_file: "docs/visualization_catalog/gsea_hallmark_nes_summary/config/go_dna_repair_pathways.yml"
+
+sort_by: "NES"
+x_variable: "NES"
+size_variable: "NES"
+size_transform: "abs"
+color_variable: "pvalue"
+color_transform: "-log10"
+color_low: "#e07e65"
+color_high: "#9b1f2a"
+
+output_prefix: "projects/ADCY7_proteomics/figures/ADCY7_proteomics_GSEA/ADCY7_proteomics_GO_BP_DNA_repair_NES_summary"
+
+label_wrap_width: 36
+width: 6
+height: 5
+dpi: 300

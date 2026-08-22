@@ -208,12 +208,12 @@ plot_gsea_enrichment_curve <- function(
   )
 
   plot <- ggplot2::ggplot(plot_curve_data, ggplot2::aes(x = .data$rank, y = .data$running_ES)) +
-    ggplot2::geom_line(linewidth = 0.7, color = "steelblue4") +
+    ggplot2::geom_line(linewidth = 0.7, color = "red") +
     ggplot2::geom_hline(yintercept = 0, linetype = "dashed", color = "grey55") +
     ggplot2::geom_vline(
       xintercept = visual_es_rank,
       linetype = "dotted",
-      color = "grey40"
+      color = "red"
     ) +
     ggplot2::geom_point(
       data = plot_curve_data[plot_curve_data$rank == visual_es_rank, , drop = FALSE],

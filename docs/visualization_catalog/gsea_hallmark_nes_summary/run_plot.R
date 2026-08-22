@@ -58,8 +58,14 @@ optional_config <- function(name, default) {
 }
 
 sort_by <- optional_config("sort_by", "NES")
-color_by <- optional_config("color_by", "NES")
-size_by <- optional_config("size_by", "setSize")
+x_variable <- optional_config("x_variable", "NES")
+size_variable <- optional_config("size_variable", "NES")
+size_transform <- optional_config("size_transform", "abs")
+color_variable <- optional_config("color_variable", "pvalue")
+color_transform <- optional_config("color_transform", "-log10")
+color_low <- optional_config("color_low", "#e07e65")
+color_high <- optional_config("color_high", "#9b1f2a")
+label_wrap_width <- as.numeric(optional_config("label_wrap_width", 0))
 width <- as.numeric(optional_config("width", 7))
 height <- as.numeric(optional_config("height", 5))
 dpi <- as.numeric(optional_config("dpi", 300))
@@ -69,6 +75,9 @@ gsea_result <- read.delim(
   check.names = FALSE,
   stringsAsFactors = FALSE
 )
+if (!"pvalue" %in% colnames(gsea_result)) {
+  stop("Required column pvalue missing", call. = FALSE)
+}
 
 script_argument <- grep(
   "^--file=",
@@ -88,8 +97,14 @@ plot_hallmark_nes_summary(
   gsea_result = gsea_result,
   pathway_file = pathway_file,
   sort_by = sort_by,
-  color_by = color_by,
-  size_by = size_by,
+  x_variable = x_variable,
+  size_variable = size_variable,
+  size_transform = size_transform,
+  color_variable = color_variable,
+  color_transform = color_transform,
+  color_low = color_low,
+  color_high = color_high,
+  label_wrap_width = label_wrap_width,
   output_prefix = output_prefix,
   width = width,
   height = height,

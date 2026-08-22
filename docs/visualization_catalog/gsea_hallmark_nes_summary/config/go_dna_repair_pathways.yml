@@ -1,0 +1,9 @@
+# The key name is retained for compatibility with the existing summary module.
+hallmark_set:
+  - GO:0006289
+  - GO:0006281
+  - GO:0006302
+  - GO:0000724
+  - GO:0006303
+  - GO:0006298
+  - GO:0006284

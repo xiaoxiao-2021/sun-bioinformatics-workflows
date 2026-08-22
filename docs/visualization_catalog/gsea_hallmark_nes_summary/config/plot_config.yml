@@ -1,4 +1,4 @@
-input_file: "projects/U251_LM3_RNA-seq/results/LM3/GSEA/LM3_OE_vs_NC_GSEA_Hallmark_all.tsv"
+input_file: "projects/ADCY7_proteomics/results/GSEA/ADCY7_proteomics_GSEA_Hallmark_all.tsv"
 
 
 
@@ -7,12 +7,18 @@ pathway_file: "docs/visualization_catalog/gsea_hallmark_nes_summary/config/hallm
 
 sort_by: "NES"
 
-color_by: "NES"
+x_variable: "NES"
 
-size_by: "setSize"
+size_variable: "NES"
+size_transform: "abs"
 
-output_prefix: "projects/U251_LM3_RNA-seq/figures/U251_GSEA/U251_OE_vs_NC_Hallmark_NES_summary"
+color_variable: "pvalue"
+color_transform: "-log10"
+color_low: "#e07e65"
+color_high: "#9b1f2a"
 
-width: 7
+output_prefix: "projects/ADCY7_proteomics/figures/ADCY7_proteomics_GSEA/ADCY7_proteomics_OE_vs_NC_Hallmark_NES_summary"
+
+width: 6
 height: 5
 dpi: 300
